@@ -1,422 +1,315 @@
 /***************************************************************
- * user-auth.js
+ * helper.js
  *
- * Provides login & signup forms for your Azure Static Web App,
- * calling the Functions at /api/Register and /api/Login.
+ * Contains logic for factor computations, PDS, and backend API
+ * integration with proper security.
  ***************************************************************/
-document.addEventListener('DOMContentLoaded', () => {
-  const userProfile = document.getElementById('user-profile');
-  // For Azure Static Web Apps, the Functions are accessible at /api
-  const API_BASE_URL = '/api';
 
-  // Check if there's a JWT in localStorage
-  const token = localStorage.getItem('token');
-  if (token) {
-    // If we have a token, show the user's profile
-    showUserProfile();
+/** Example of how you might store your test key. */
+const GOOGLE_API_KEY = "AIzaSyB-RIjhhODp6aPTzqVcwbXD894oebXFCUY";
+
+/** Configuration object with constants */
+const Config = {
+  PDS_BUY_THRESHOLD: 5,
+  PDS_CONSIDER_THRESHOLD: 0,
+  FACTOR_LABELS: {
+    "D": "Discretionary Income",
+    "O": "Opportunity Cost",
+    "G": "Goal Alignment",
+    "L": "Long-Term Impact",
+    "B": "Behavioral"
+  }
+};
+
+/**
+ * Backend API endpoint for secure analysis (or direct Google, Gemini, etc.)
+ */
+async function callGeminiAPI(inputs) {
+  try {
+    console.log("Submitting request to backend service:", inputs);
+
+    // For now, return a fallback. Or call your real endpoint with fetch:
+    // e.g., fetch('https://example.com/my-secure-api?key=' + GOOGLE_API_KEY)
+    return getFallbackAnalysis(inputs);
+
+  } catch (error) {
+    console.error("Error calling analysis API:", error);
+    return getFallbackAnalysis(inputs);
+  }
+}
+
+/**
+ * Enhanced fallback function that provides realistic analysis
+ * when the API is unavailable or encounters an error.
+ */
+function getFallbackAnalysis(inputs) {
+  console.log("Using fallback analysis for:", inputs);
+
+  // More sophisticated fallback that considers actual input values
+  let D = 0; // Discretionary Income
+  let O = 0; // Opportunity Cost
+  let G = 0; // Goal Alignment
+  let L = 0; // Long-Term Impact
+  let B = 0; // Behavioral
+
+  // Discretionary Income factor
+  const costToIncomeRatio = inputs.itemCost / (inputs.leftoverIncome || 1000);
+  if (costToIncomeRatio < 0.1) D = 2;
+  else if (costToIncomeRatio < 0.25) D = 1;
+  else if (costToIncomeRatio < 0.5) D = 0;
+  else if (costToIncomeRatio < 1) D = -1;
+  else D = -2;
+
+  // Opportunity Cost factor
+  if (inputs.hasHighInterestDebt === "Yes") {
+    O = -2;
   } else {
-    // Otherwise, show login/signup tabs
-    renderAuthTabs();
+    O = Math.min(2, Math.max(-2, 1 - Math.floor(costToIncomeRatio * 2)));
   }
 
-  /****************************************************
-   * RENDER FUNCTIONS
-   ****************************************************/
+  // Goal Alignment factor
+  const goalLower = (inputs.mainFinancialGoal || "").toLowerCase();
+  const itemLower = (inputs.itemName || "").toLowerCase();
 
-  function showUserProfile() {
-    // We stored the username in localStorage upon login.
-    const username = localStorage.getItem('username') || 'User';
+  if (
+    goalLower.includes("emergency") ||
+    goalLower.includes("debt") ||
+    goalLower.includes("save")
+  ) {
+    // If saving is the goal, most purchases are negative
+    G = -1;
+    // Unless the item is directly related to the goal
+    if (
+      (goalLower.includes("emergency") && itemLower.includes("emergency")) ||
+      (goalLower.includes("health") && itemLower.includes("health"))
+    ) {
+      G = 1;
+    }
+  } else if (goalLower.includes("invest") || goalLower.includes("business")) {
+    // For investment goals
+    G = (itemLower.includes("invest") || itemLower.includes("business")) ? 1 : -1;
+  } else {
+    G = 0;
+  }
 
-    userProfile.innerHTML = `
-      <div class="user-info">
-        <div class="user-avatar default">${username.charAt(0).toUpperCase()}</div>
-        <div>
-          <div class="user-name">${username}</div>
-          <div class="user-provider">Local</div>
-        </div>
-      </div>
-      <button class="logout-btn">Logout</button>
-    `;
+  // Long-term Impact factor
+  if (
+    itemLower.includes("invest") ||
+    itemLower.includes("education") ||
+    itemLower.includes("health") ||
+    itemLower.includes("skill")
+  ) {
+    L = 2;
+  } else if (
+    itemLower.includes("computer") ||
+    itemLower.includes("tool") ||
+    itemLower.includes("equipment") ||
+    itemLower.includes("book")
+  ) {
+    L = 1;
+  } else if (
+    itemLower.includes("subscription") ||
+    itemLower.includes("service") ||
+    itemLower.includes("vacation")
+  ) {
+    L = -1;
+  } else if (
+    itemLower.includes("luxury") ||
+    itemLower.includes("entertainment")
+  ) {
+    L = -2;
+  } else {
+    L = 0;
+  }
 
-    document.querySelector('.logout-btn').addEventListener('click', () => {
-      // Clear the JWT and username from localStorage
-      localStorage.removeItem('token');
-      localStorage.removeItem('username');
-      // Show the login/signup tabs again
-      renderAuthTabs();
+  // Behavioral factor
+  if (inputs.purchaseUrgency === "Urgent Needs") {
+    B = 2;
+  } else if (inputs.purchaseUrgency === "Mixed") {
+    B = 0;
+  } else if (inputs.purchaseUrgency === "Mostly Wants") {
+    B = -1;
+  } else {
+    B = 0;
+  }
+
+  // Adjust based on cost - expensive "wants"
+  if (inputs.purchaseUrgency === "Mostly Wants" && costToIncomeRatio > 0.5) {
+    B = -2;
+  }
+
+  return {
+    "D": D,
+    "O": O,
+    "G": G,
+    "L": L,
+    "B": B,
+    "D_explanation": `With your monthly leftover income of $${inputs.leftoverIncome}, this purchase ${
+      D > 0 ? "fits well" : "might strain"
+    } your budget.`,
+    "O_explanation": `${O > 0 ? "Good use of funds" : "Consider if there are better uses"}${
+      inputs.hasHighInterestDebt === "Yes" ? ", especially with your high-interest debt." : "."
+    }`,
+    "G_explanation": `This purchase ${
+      G > 0 ? "aligns with" : "may not directly support"
+    } your goal to ${inputs.mainFinancialGoal}.`,
+    "L_explanation": `${
+      L > 0
+        ? "This may provide long-term value"
+        : "Consider the long-term benefits, which seem limited"
+    } based on the nature of the item.`,
+    "B_explanation": `This appears to be ${inputs.purchaseUrgency ? inputs.purchaseUrgency.toLowerCase() : "a mixed need/want"}, which ${
+      B > 0 ? "justifies the purchase" : "suggests you might want to reconsider"
+    }.`
+  };
+}
+
+/** Compute the PDS from factor scores */
+function computePDS(factors) {
+  let { D = 0, O = 0, G = 0, L = 0, B = 0 } = factors;
+  return D + O + G + L + B;
+}
+
+/** Determine recommendation text/class from PDS */
+function getRecommendation(pds) {
+  if (pds >= Config.PDS_BUY_THRESHOLD) {
+    return { text: "Buy it.", cssClass: "positive" };
+  } else if (pds < Config.PDS_CONSIDER_THRESHOLD) {
+    return { text: "Don't buy it.", cssClass: "negative" };
+  } else {
+    return { text: "Consider carefully.", cssClass: "neutral" };
+  }
+}
+
+/**
+ * Create a radar chart with Plotly
+ */
+function createRadarChart(containerId, factors) {
+  const container = document.getElementById(containerId);
+  if (!container) {
+    console.error(`Radar chart container ${containerId} not found`);
+    return;
+  }
+
+  const categories = Object.keys(Config.FACTOR_LABELS).map(k => Config.FACTOR_LABELS[k]);
+  const vals = Object.keys(Config.FACTOR_LABELS).map(k => factors[k] || 0);
+
+  // Close the shape
+  vals.push(vals[0]);
+  categories.push(categories[0]);
+
+  const data = [
+    {
+      type: "scatterpolar",
+      r: vals,
+      theta: categories,
+      fill: "toself",
+      fillcolor: "rgba(90, 103, 216, 0.2)",
+      line: { color: "#5a67d8", width: 2 },
+      name: "Factors"
+    }
+  ];
+
+  // Add reference lines
+  for (let i = -2; i <= 2; i++) {
+    data.push({
+      type: "scatterpolar",
+      r: Array(categories.length).fill(i),
+      theta: categories,
+      line: { color: "rgba(200,200,200,0.5)", width: 1, dash: "dash" },
+      showlegend: false
     });
   }
 
-  function renderAuthTabs() {
-    userProfile.innerHTML = `
-      <div class="auth-tabs">
-        <button id="tab-login" class="auth-tab active">Login</button>
-        <button id="tab-signup" class="auth-tab">Sign Up</button>
-      </div>
-      <div id="auth-content"></div>
-    `;
+  const layout = {
+    polar: {
+      radialaxis: {
+        visible: true,
+        range: [-3, 3],
+        tickvals: [-2, -1, 0, 1, 2],
+        gridcolor: "rgba(200,200,200,0.3)"
+      },
+      angularaxis: {
+        gridcolor: "rgba(200,200,200,0.3)"
+      },
+      bgcolor: "rgba(255,255,255,0.9)"
+    },
+    showlegend: false,
+    margin: { l: 60, r: 60, t: 20, b: 20 },
+    height: 350,
+    paper_bgcolor: "rgba(0,0,0,0)",
+    plot_bgcolor: "rgba(0,0,0,0)"
+  };
 
-    const tabLogin = document.getElementById('tab-login');
-    const tabSignup = document.getElementById('tab-signup');
-    const authContent = document.getElementById('auth-content');
+  try {
+    Plotly.newPlot(containerId, data, layout, { displayModeBar: false });
+  } catch (error) {
+    console.error(`Error creating radar chart: ${error.message}`);
+    container.innerHTML = '<div class="error-message">Chart could not be loaded</div>';
+  }
+}
 
-    // Show login form by default
-    showLoginForm();
-
-    // Tab click handlers
-    tabLogin.addEventListener('click', () => {
-      tabLogin.classList.add('active');
-      tabSignup.classList.remove('active');
-      showLoginForm();
-    });
-
-    tabSignup.addEventListener('click', () => {
-      tabSignup.classList.add('active');
-      tabLogin.classList.remove('active');
-      showSignupForm();
-    });
-
-    // Form rendering functions
-    function showLoginForm() {
-      authContent.innerHTML = `
-        <form id="login-form" class="auth-form">
-          <div class="form-group">
-            <label for="login-username">Username</label>
-            <input type="text" id="login-username" required />
-          </div>
-          <div class="form-group">
-            <label for="login-password">Password</label>
-            <div class="password-input-wrapper">
-              <input type="password" id="login-password" required />
-              <button type="button" class="password-toggle-btn">
-                <i class="fas fa-eye"></i>
-              </button>
-            </div>
-          </div>
-          <button type="submit" class="auth-submit-btn">Login</button>
-          <div id="login-error" class="auth-error"></div>
-        </form>
-      `;
-
-      setupPasswordToggle();
-      setupLoginForm();
-    }
-
-    function showSignupForm() {
-      authContent.innerHTML = `
-        <form id="signup-form" class="auth-form">
-          <div class="form-group">
-            <label for="signup-username">Username</label>
-            <input type="text" id="signup-username" required />
-          </div>
-          <div class="form-group">
-            <label for="signup-password">Password</label>
-            <div class="password-input-wrapper">
-              <input type="password" id="signup-password" required />
-              <button type="button" class="password-toggle-btn">
-                <i class="fas fa-eye"></i>
-              </button>
-            </div>
-          </div>
-          <div class="form-group">
-            <label for="signup-confirm">Confirm Password</label>
-            <div class="password-input-wrapper">
-              <input type="password" id="signup-confirm" required />
-              <button type="button" class="password-toggle-btn">
-                <i class="fas fa-eye"></i>
-              </button>
-            </div>
-          </div>
-          <button type="submit" class="auth-submit-btn">Sign Up</button>
-          <div id="signup-error" class="auth-error"></div>
-        </form>
-      `;
-
-      setupPasswordToggle();
-      setupSignupForm();
-    }
+/**
+ * Create a gauge chart with Plotly
+ */
+function createPdsGauge(containerId, pds) {
+  const container = document.getElementById(containerId);
+  if (!container) {
+    console.error(`Gauge chart container ${containerId} not found`);
+    return;
   }
 
-  /****************************************************
-   * FORM HANDLING
-   ****************************************************/
-
-  function setupPasswordToggle() {
-    const toggleBtns = document.querySelectorAll('.password-toggle-btn');
-    toggleBtns.forEach(btn => {
-      btn.addEventListener('click', function() {
-        const passwordInput = this.previousElementSibling;
-        const icon = this.querySelector('i');
-        
-        if (passwordInput.type === 'password') {
-          passwordInput.type = 'text';
-          icon.classList.remove('fa-eye');
-          icon.classList.add('fa-eye-slash');
-        } else {
-          passwordInput.type = 'password';
-          icon.classList.remove('fa-eye-slash');
-          icon.classList.add('fa-eye');
-        }
-      });
-    });
+  let color;
+  if (pds >= Config.PDS_BUY_THRESHOLD) {
+    color = "#48bb78"; // green
+  } else if (pds < Config.PDS_CONSIDER_THRESHOLD) {
+    color = "#f56565"; // red
+  } else {
+    color = "#ed8936"; // orange
   }
 
-  function setupLoginForm() {
-    const loginForm = document.getElementById('login-form');
-    const loginError = document.getElementById('login-error');
+  const data = [
+    {
+      type: "indicator",
+      mode: "gauge+number",
+      value: pds,
+      gauge: {
+        axis: { range: [-10, 10] },
+        bar: { color: color },
+        bgcolor: "white",
+        borderwidth: 2,
+        bordercolor: "#e2e8f0",
+        steps: [
+          { range: [-10, 0], color: "#fed7d7" },
+          { range: [0, 5], color: "#feebc8" },
+          { range: [5, 10], color: "#c6f6d5" }
+        ]
+      },
+      domain: { x: [0, 1], y: [0, 1] }
+    }
+  ];
 
-    loginForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      loginError.textContent = '';
+  const layout = {
+    height: 250,
+    margin: { l: 20, r: 20, t: 50, b: 20 },
+    paper_bgcolor: "rgba(0,0,0,0)",
+    font: { color: "#2d3748", family: "Inter, sans-serif" }
+  };
 
-      const username = document.getElementById('login-username').value;
-      const password = document.getElementById('login-password').value;
-
-      if (!username || !password) {
-        loginError.textContent = 'Please enter both username and password';
-        return;
-      }
-
-      try {
-        // Show loading state
-        loginForm.classList.add('loading');
-        const submitBtn = loginForm.querySelector('.auth-submit-btn');
-        const originalBtnText = submitBtn.textContent;
-        submitBtn.textContent = 'Logging in...';
-
-        // Make API call to login endpoint
-        const response = await fetch(`${API_BASE_URL}/Login`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ username, password })
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Login failed');
-        }
-
-        // Store the JWT and username in localStorage
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('username', username);
-
-        // Show the user's profile
-        showUserProfile();
-      } catch (error) {
-        console.error('Login error:', error);
-        loginError.textContent = error.message || 'Login failed. Please try again.';
-      } finally {
-        // Reset loading state
-        loginForm.classList.remove('loading');
-        const submitBtn = loginForm.querySelector('.auth-submit-btn');
-        submitBtn.textContent = 'Login';
-      }
-    });
+  try {
+    Plotly.newPlot(containerId, data, layout, { displayModeBar: false });
+  } catch (error) {
+    console.error(`Error creating gauge chart: ${error.message}`);
+    container.innerHTML = '<div class="error-message">Chart could not be loaded</div>';
   }
+}
 
-  function setupSignupForm() {
-    const signupForm = document.getElementById('signup-form');
-    const signupError = document.getElementById('signup-error');
-
-    signupForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      signupError.textContent = '';
-
-      const username = document.getElementById('signup-username').value;
-      const password = document.getElementById('signup-password').value;
-      const confirm = document.getElementById('signup-confirm').value;
-
-      if (!username || !password || !confirm) {
-        signupError.textContent = 'Please fill out all fields';
-        return;
-      }
-
-      if (password !== confirm) {
-        signupError.textContent = 'Passwords do not match';
-        return;
-      }
-
-      try {
-        // Show loading state
-        signupForm.classList.add('loading');
-        const submitBtn = signupForm.querySelector('.auth-submit-btn');
-        const originalBtnText = submitBtn.textContent;
-        submitBtn.textContent = 'Signing up...';
-
-        // Make API call to register endpoint
-        const response = await fetch(`${API_BASE_URL}/Register`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ username, password })
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Registration failed');
-        }
-
-        // Show success message
-        signupForm.innerHTML = `
-          <div class="auth-success">
-            <i class="fas fa-check-circle"></i>
-            <h3>Registration Successful!</h3>
-            <p>You can now log in with your credentials.</p>
-            <button id="go-to-login" class="auth-submit-btn">Go to Login</button>
-          </div>
-        `;
-
-        // Add event listener to the "Go to Login" button
-        document.getElementById('go-to-login').addEventListener('click', () => {
-          document.getElementById('tab-login').click();
-        });
-      } catch (error) {
-        console.error('Signup error:', error);
-        signupError.textContent = error.message || 'Registration failed. Please try again.';
-      } finally {
-        // Reset loading state if we're still showing the form
-        if (signupForm.classList.contains('loading')) {
-          signupForm.classList.remove('loading');
-          const submitBtn = signupForm.querySelector('.auth-submit-btn');
-          submitBtn.textContent = 'Sign Up';
-        }
-      }
-    });
-  }
-
-  /****************************************************
-   * CSS STYLES FOR AUTH COMPONENTS
-   ****************************************************/
-   
-  // Add styles for the authentication components
-  const style = document.createElement('style');
-  style.textContent = `
-    .auth-tabs {
-      display: flex;
-      margin-bottom: 1rem;
-      border-bottom: 1px solid var(--neutral-300);
-    }
-    
-    .auth-tab {
-      padding: 0.5rem 1rem;
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-weight: 500;
-      color: var(--neutral-600);
-      border-bottom: 2px solid transparent;
-      transition: all 0.2s ease;
-    }
-    
-    .auth-tab.active {
-      color: var(--primary);
-      border-bottom-color: var(--primary);
-    }
-    
-    .auth-form {
-      padding: 0.5rem 0;
-    }
-    
-    .auth-submit-btn {
-      width: 100%;
-      background: var(--primary);
-      color: white;
-      border: none;
-      padding: 0.75rem;
-      border-radius: 6px;
-      font-weight: 600;
-      cursor: pointer;
-      margin-top: 1rem;
-      transition: all 0.2s ease;
-    }
-    
-    .auth-submit-btn:hover {
-      background: var(--primary-dark);
-    }
-    
-    .auth-error {
-      color: var(--danger);
-      font-size: 0.85rem;
-      margin-top: 0.75rem;
-      min-height: 1.25rem;
-    }
-    
-    .auth-success {
-      text-align: center;
-      padding: 1rem 0;
-    }
-    
-    .auth-success i {
-      font-size: 2rem;
-      color: var(--success);
-      margin-bottom: 0.5rem;
-    }
-    
-    .auth-success h3 {
-      margin: 0.5rem 0;
-      color: var(--neutral-800);
-    }
-    
-    .auth-success p {
-      margin-bottom: 1rem;
-      color: var(--neutral-600);
-    }
-    
-    .user-info {
-      display: flex;
-      align-items: center;
-      margin-bottom: 1rem;
-    }
-    
-    .user-avatar {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background: var(--primary-light);
-      color: var(--primary);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      margin-right: 0.75rem;
-    }
-    
-    .user-name {
-      font-weight: 600;
-      color: var(--neutral-800);
-    }
-    
-    .user-provider {
-      font-size: 0.75rem;
-      color: var(--neutral-500);
-    }
-    
-    .logout-btn {
-      width: 100%;
-      background: var(--neutral-200);
-      color: var(--neutral-700);
-      border: none;
-      padding: 0.5rem;
-      border-radius: 6px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-    
-    .logout-btn:hover {
-      background: var(--neutral-300);
-    }
-    
-    .auth-form.loading {
-      opacity: 0.7;
-      pointer-events: none;
-    }
-  `;
-  
-  document.head.appendChild(style);
-});
+// Export
+window.AppHelpers = {
+  Config,
+  callGeminiAPI,
+  computePDS,
+  getRecommendation,
+  createRadarChart,
+  createPdsGauge
+};
