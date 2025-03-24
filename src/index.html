@@ -7,7 +7,6 @@
 
   <!-- Main Styles -->
   <link rel="stylesheet" href="styles.css" />
-  <link rel="stylesheet" href="onboarding.css" />
 
   <!-- Plotly for charts -->
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
@@ -16,32 +15,24 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
-  <!-- Mobile Menu Toggle -->
-  <div class="mobile-menu-toggle">
-    <button id="menu-toggle"><i class="fas fa-bars"></i></button>
-  </div>
-
   <div class="app-container">
     <!-- Sidebar -->
     <aside>
-      <div class="sidebar-header">
-        <div class="logo">
-          <div class="logo-icon">M</div>
-          <div class="logo-text">Munger AI</div>
-        </div>
-        <button class="close-sidebar-btn"><i class="fas fa-times"></i></button>
+      <div class="logo">
+        <div class="logo-icon">M</div>
+        <div class="logo-text">Munger AI</div>
       </div>
       
       <!-- Navigation -->
       <nav class="sidebar-nav">
-        <button id="nav-basic" class="nav-btn active" data-tooltip="Make quick purchase decisions" data-tooltip-position="right">Decision Tool</button>
-        <button id="nav-profile" class="nav-btn" data-tooltip="Set up your financial profile" data-tooltip-position="right">My Profile</button>
+        <button id="nav-basic" class="nav-btn active">Decision Tool</button>
+        <button id="nav-profile" class="nav-btn">My Profile</button>
         <hr />
         <div class="quick-tips">
           <h4>Quick Tips</h4>
           <ul>
             <li>Enter item &amp; cost</li>
-            <li>Optional: Upload a photo for AI analysis</li>
+            <li>Upload a photo for AI analysis</li>
             <li>Score &gt;= 5 = buy</li>
           </ul>
         </div>
@@ -98,19 +89,18 @@
             </div>
           </div>
 
-          <!-- IMAGE UPLOAD - now optional -->
+          <!-- IMAGE UPLOAD added to basic form -->
           <div class="form-group">
-            <label for="basic-item-image">Image of the Item (Optional)</label>
+            <label for="basic-item-image">Image of the Item</label>
             <input 
               type="file" 
               id="basic-item-image" 
               accept="image/*"
-              data-optional="true"
             />
             <div class="input-tip">Upload a photo and let our AI analyze your item</div>
           </div>
 
-          <button type="submit" class="submit-btn" data-tooltip="Get your purchase recommendation" data-tooltip-position="top">Should I Buy It?</button>
+          <button type="submit" class="submit-btn">Should I Buy It?</button>
         </form>
 
         <div id="basic-result"></div>
@@ -128,6 +118,5 @@
   <script src="main.js"></script>
   <script src="user-auth.js"></script>
   <script src="navigation-updates.js"></script>
-  <script src="onboarding.js"></script>
 </body>
 </html>
