@@ -27,10 +27,12 @@ const Config = {
 /**
  * Calls the Gemini-based Azure Function if `imageBase64` is provided.
  * Falls back to user-provided name/cost if no image or error occurs.
+ * Now includes facts about the item for a richer user experience.
  */
 async function callGeminiAPI(inputs) {
   try {
     let recognizedImage = false;
+    let itemFacts = "";
     
     if (inputs.imageBase64) {
       console.log("Calling Gemini AI with image...");
@@ -62,8 +64,16 @@ async function callGeminiAPI(inputs) {
           inputs.itemCost = data.cost;
           recognizedImage = true;
         }
+        
+        // Store item facts if available
+        if (data.facts) {
+          itemFacts = data.facts;
+        }
       }
     }
+    
+    // Add item facts to inputs for use in the decision algorithm
+    inputs.itemFacts = itemFacts;
 
     // Generate an explanation and final decision
     return advancedDecisionAlgorithm(inputs, recognizedImage);
@@ -209,7 +219,8 @@ function advancedDecisionAlgorithm(inputs, recognizedImage) {
     itemName,
     disposableIncomeRatio,
     recognizedImage,
-    financialGoal
+    financialGoal,
+    itemFacts: inputs.itemFacts || ""
   });
 
   // Debugging information
@@ -248,7 +259,8 @@ function generateExplanation(factors) {
     itemName,
     disposableIncomeRatio,
     recognizedImage,
-    financialGoal
+    financialGoal,
+    itemFacts
   } = factors;
   
   // Format percentage for disposable income
@@ -259,6 +271,11 @@ function generateExplanation(factors) {
   
   if (recognizedImage) {
     explanation = `AI has analyzed your image and identified it as a ${itemName}. `;
+    
+    // Add item facts if available
+    if (itemFacts) {
+      explanation += `${itemFacts} `;
+    }
   }
   
   // Primary factor determination (lowest factor has biggest impact on decision)
