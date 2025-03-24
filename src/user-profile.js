@@ -63,8 +63,21 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       try {
+        // Save to localStorage
         const username = localStorage.getItem('username');
         localStorage.setItem(`profile_${username}`, JSON.stringify(profileData));
+
+        // If API is available and token exists, also save to server
+        if (token) {
+          saveProfileToServer(profileData, token)
+            .then(() => {
+              console.log("Profile saved to server successfully");
+            })
+            .catch(err => {
+              console.error("Error saving profile to server:", err);
+              // Still proceed with showing success since we saved locally
+            });
+        }
 
         // Show success
         profileForm.classList.add('hidden');
@@ -104,19 +117,81 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!username) return;
 
     const dataStr = localStorage.getItem(`profile_${username}`);
-    if (!dataStr) return;
+    if (!dataStr) {
+      // Try to load from server if we have a token
+      const token = localStorage.getItem('token');
+      if (token) {
+        fetchProfileFromServer(token)
+          .then(data => {
+            if (data) {
+              fillProfileForm(data);
+              localStorage.setItem(`profile_${username}`, JSON.stringify(data));
+            }
+          })
+          .catch(err => {
+            console.error("Error loading profile from server:", err);
+          });
+      }
+      return;
+    }
 
     try {
       const data = JSON.parse(dataStr);
-      // Fill in form
-      for (const [key, value] of Object.entries(data)) {
-        if (profileForm.elements[key]) {
-          profileForm.elements[key].value = value;
-        }
-      }
-      updateCompletionPercentage();
+      fillProfileForm(data);
     } catch (error) {
       console.error('Error loading profile data:', error);
+    }
+  }
+
+  function fillProfileForm(data) {
+    // Fill in form
+    for (const [key, value] of Object.entries(data)) {
+      if (profileForm.elements[key]) {
+        profileForm.elements[key].value = value;
+      }
+    }
+    updateCompletionPercentage();
+  }
+
+  async function fetchProfileFromServer(token) {
+    try {
+      const response = await fetch('/api/profile', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error fetching profile: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+      return null;
+    }
+  }
+
+  async function saveProfileToServer(profileData, token) {
+    try {
+      const response = await fetch('/api/profile', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(profileData)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error saving profile: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error saving profile:", error);
+      throw error;
     }
   }
 
@@ -142,7 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Optionally expose a getter for your profile data:
+  // Expose a getter for your profile data globally:
   window.UserProfile = {
     getUserFinancialProfile() {
       const username = localStorage.getItem('username');
