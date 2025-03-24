@@ -19,34 +19,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // DOM references
   const navBasicBtn = document.getElementById("nav-basic");
-  const navAdvancedBtn = document.getElementById("nav-advanced");
   const basicSection = document.getElementById("basic-section");
-  const advancedSection = document.getElementById("advanced-section");
   const basicForm = document.getElementById("basic-form");
-  const advancedForm = document.getElementById("advanced-form");
   const basicResultDiv = document.getElementById("basic-result");
-  const advancedResultDiv = document.getElementById("advanced-result");
 
-  hideAdvancedToolIfProfileComplete();
   initializeTooltips();
-
-  if (navBasicBtn) {
-    navBasicBtn.addEventListener("click", () => {
-      navBasicBtn.classList.add("active");
-      if (navAdvancedBtn) navAdvancedBtn.classList.remove("active");
-      basicSection.classList.remove("hidden");
-      advancedSection.classList.add("hidden");
-    });
-  }
-
-  if (navAdvancedBtn) {
-    navAdvancedBtn.addEventListener("click", () => {
-      navBasicBtn.classList.remove("active");
-      navAdvancedBtn.classList.add("active");
-      basicSection.classList.add("hidden");
-      advancedSection.classList.remove("hidden");
-    });
-  }
 
   // Basic Form
   if (basicForm) {
@@ -66,22 +43,43 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Check for image
         const fileInput = document.getElementById("basic-item-image");
-        let base64Image = "";
-        if (fileInput.files && fileInput.files[0]) {
-          base64Image = await toBase64(fileInput.files[0]);
+        let imageBase64 = "";
+        if (fileInput && fileInput.files && fileInput.files[0]) {
+          imageBase64 = await toBase64(fileInput.files[0]);
         }
 
-        // Provide default leftover income
+        // Provide default values
         const leftoverIncome = Math.max(1000, itemCost * 2);
         const hasHighInterestDebt = "No";
         const mainFinancialGoal = "Save for emergencies";
         const purchaseUrgency = "Mixed";
 
+        // Get profile data if available
+        let profileData = null;
+        try {
+          if (window.UserProfile && typeof window.UserProfile.getUserFinancialProfile === 'function') {
+            profileData = window.UserProfile.getUserFinancialProfile();
+          }
+        } catch (e) {
+          console.error("Error loading user profile:", e);
+        }
+
+        // Use profile data if available
+        const userLeftoverIncome = profileData?.disposableIncome || 
+                                  (profileData?.monthlyIncome && profileData?.monthlyExpenses ? 
+                                    parseFloat(profileData.monthlyIncome) - parseFloat(profileData.monthlyExpenses) : 
+                                    leftoverIncome);
+        
+        const userHasDebt = profileData?.highInterestDebt && parseFloat(profileData.highInterestDebt) > 0 ? 
+                            "Yes" : "No";
+        
+        const userGoal = profileData?.financialGoal || mainFinancialGoal;
+
         // Call the Gemini-based analysis
         const factors = await callGeminiAPI({
-          leftoverIncome,
-          hasHighInterestDebt,
-          mainFinancialGoal,
+          leftoverIncome: userLeftoverIncome,
+          hasHighInterestDebt: userHasDebt,
+          mainFinancialGoal: userGoal,
           purchaseUrgency,
           itemName,
           itemCost,
@@ -141,100 +139,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Advanced Form (unchanged except it also can pass an image).
-  if (advancedForm) {
-    initializeFormValidation(advancedForm);
-    advancedForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      if (!advancedForm.checkValidity()) {
-        showValidationMessages(advancedForm);
-        return;
-      }
-      advancedResultDiv.innerHTML = renderLoadingState();
-
-      try {
-        const itemName = document.getElementById("adv-item-name").value.trim() || "Unnamed";
-        const itemCost = parseFloat(document.getElementById("adv-item-cost").value) || 0;
-        const leftoverIncome = parseFloat(document.getElementById("adv-leftover-income").value) || 0;
-        const hasDebt = document.getElementById("adv-debt").value;
-        const mainGoal = document.getElementById("adv-goal").value;
-        const urgency = document.getElementById("adv-urgency").value;
-        const extraNotes = document.getElementById("adv-extra-notes").value;
-
-        const fileInput = document.getElementById("adv-item-image");
-        let base64Image = "";
-        if (fileInput.files && fileInput.files[0]) {
-          base64Image = await toBase64(fileInput.files[0]);
-        }
-
-        const factors = await callGeminiAPI({
-          leftoverIncome,
-          hasHighInterestDebt: hasDebt,
-          mainFinancialGoal: mainGoal,
-          purchaseUrgency: urgency,
-          itemName,
-          itemCost,
-          extraContext: extraNotes,
-          imageBase64
-        });
-
-        const pds = computePDS(factors);
-        const { text: recText, cssClass: recClass } = getRecommendation(pds);
-
-        advancedResultDiv.innerHTML = `
-          <div class="analysis-result">
-            ${renderItemCard(factors.itemName || itemName, factors.itemCost || itemCost)}
-            <div class="result-grid">
-              <div class="result-column decision-column">
-                ${renderDecisionBox(pds, recText, recClass)}
-                <div class="gauge-container" id="advanced-gauge"></div>
-              </div>
-              <div class="result-column factors-column">
-                <h3>Factor Analysis</h3>
-                <div class="radar-container" id="advanced-radar"></div>
-                <div id="advanced-factors"></div>
-              </div>
-              ${
-                extraNotes
-                  ? `<div class="extra-context">
-                      <h4>Your Additional Context</h4>
-                      <p>${extraNotes}</p>
-                    </div>`
-                  : ""
-              }
-            </div>
-          </div>
-        `;
-
-        const factorsDiv = document.getElementById("advanced-factors");
-        factorsDiv.innerHTML = `<h3>Decision Factors</h3>`;
-        for (const factor of ["D","O","G","L","B"]) {
-          const val = factors[factor] || 0;
-          factorsDiv.innerHTML += renderFactorCard(factor, val, Config.FACTOR_LABELS[factor]);
-          const explanationKey = factor + "_explanation";
-          if (factors[explanationKey]) {
-            factorsDiv.innerHTML += `<div class="factor-explanation">${factors[explanationKey]}</div>`;
-          }
-        }
-
-        setTimeout(() => {
-          createRadarChart("advanced-radar", factors);
-          createPdsGauge("advanced-gauge", pds);
-          document.querySelector(".analysis-result")?.classList.add("result-animated");
-        }, 100);
-      } catch (err) {
-        console.error("Error in advanced analysis:", err);
-        advancedResultDiv.innerHTML = `
-          <div class="error-message">
-            <h3>Analysis Error</h3>
-            <p>We couldn't complete your analysis. Please try again later.</p>
-            <button class="retry-btn" onclick="location.reload()">Retry</button>
-          </div>
-        `;
-      }
-    });
-  }
-
   // URL share
   loadFromUrlParams();
 });
@@ -253,43 +157,8 @@ async function toBase64(file) {
   });
 }
 
-function hideAdvancedToolIfProfileComplete() {
-  const token = localStorage.getItem("token");
-  if (!token) return;
-  const username = localStorage.getItem("username");
-  if (!username) return;
-  const profileDataStr = localStorage.getItem(`profile_${username}`);
-  if (!profileDataStr) return;
-  try {
-    const data = JSON.parse(profileDataStr);
-    if (isProfileComplete(data)) {
-      const navAdv = document.getElementById("nav-advanced");
-      const advSec = document.getElementById("advanced-section");
-      if (navAdv) navAdv.style.display = "none";
-      if (advSec) advSec.classList.add("hidden");
-    }
-  } catch (err) {
-    console.error("Error checking profile completeness:", err);
-  }
-}
-
-// Pick whichever fields must be set
-function isProfileComplete(data) {
-  const requiredFields = [
-    "monthlyIncome","monthlyExpenses","emergencyFund","monthlySavings",
-    "retirementSavings","investmentAccounts","highInterestDebt","lowInterestDebt",
-    "financialGoal","riskProfile"
-  ];
-  for (const field of requiredFields) {
-    if (!data[field] || data[field].toString().trim() === "") {
-      return false;
-    }
-  }
-  return true;
-}
-
 function initializeTooltips() {
-  // If you have tooltips, define them or remove this
+  // Initialize tooltips if needed
 }
 
 function initializeFormValidation(form) {
