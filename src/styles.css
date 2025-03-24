@@ -1208,3 +1208,479 @@ input.invalid, select.invalid, textarea.invalid {
 .form-group input[type="file"]::file-selector-button:hover {
   background-color: var(--primary-dark);
 }
+
+/* Onboarding Tour Styles */
+.tour-button {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.65rem 1.25rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(90, 103, 216, 0.2);
+  margin-top: 1rem;
+  display: inline-flex;
+  align-items: center;
+  transition: all 0.3s ease;
+}
+
+.tour-button i {
+  margin-right: 0.5rem;
+}
+
+.tour-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 10px rgba(90, 103, 216, 0.25);
+}
+
+.tour-button:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 4px rgba(90, 103, 216, 0.2);
+}
+
+/* Tour overlay with cut-out effect */
+.tour-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9998;
+  display: none;
+}
+
+.overlay-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  transition: all 0.3s ease;
+}
+
+.element-highlight {
+  position: absolute;
+  box-shadow: 0 0 0 4px var(--primary), 0 0 0 8px rgba(90, 103, 216, 0.3);
+  border-radius: 4px;
+  z-index: 9999;
+  pointer-events: none;
+  animation: pulse-highlight 2s infinite;
+}
+
+/* Tooltip styling */
+.tour-tooltip {
+  position: absolute;
+  width: 300px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  z-index: 10000;
+  display: none;
+  overflow: hidden;
+  animation: tooltip-appear 0.4s ease-out;
+}
+
+.tooltip-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: linear-gradient(135deg, var(--primary-light) 0%, #f0f4ff 100%);
+  border-bottom: 1px solid var(--neutral-200);
+}
+
+.tooltip-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--primary);
+}
+
+.tooltip-close {
+  background: none;
+  border: none;
+  color: var(--neutral-500);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.25rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.tooltip-close:hover {
+  color: var(--neutral-800);
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.tooltip-content {
+  padding: 1rem;
+  color: var(--neutral-700);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.tooltip-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background-color: var(--neutral-100);
+  border-top: 1px solid var(--neutral-200);
+}
+
+.tooltip-progress {
+  font-size: 0.85rem;
+  color: var(--neutral-600);
+}
+
+.tooltip-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tooltip-actions button {
+  background-color: var(--neutral-200);
+  color: var(--neutral-700);
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tooltip-actions .btn-next,
+.tooltip-actions .btn-finish {
+  background-color: var(--primary);
+  color: white;
+}
+
+.tooltip-actions button:hover {
+  filter: brightness(0.95);
+  transform: translateY(-1px);
+}
+
+.tooltip-actions button:active {
+  transform: translateY(1px);
+}
+
+/* Tooltip arrows */
+.tour-tooltip.arrow-top::before {
+  content: "";
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 0 10px 10px 10px;
+  border-style: solid;
+  border-color: transparent transparent white transparent;
+}
+
+.tour-tooltip.arrow-bottom::before {
+  content: "";
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 10px 10px 0 10px;
+  border-style: solid;
+  border-color: white transparent transparent transparent;
+}
+
+.tour-tooltip.arrow-left::before {
+  content: "";
+  position: absolute;
+  left: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-width: 10px 10px 10px 0;
+  border-style: solid;
+  border-color: transparent white transparent transparent;
+}
+
+.tour-tooltip.arrow-right::before {
+  content: "";
+  position: absolute;
+  right: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-width: 10px 0 10px 10px;
+  border-style: solid;
+  border-color: transparent transparent transparent white;
+}
+
+/* Subtle tooltips for UI elements */
+.has-tooltip {
+  position: relative;
+}
+
+.has-tooltip::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  background-color: var(--neutral-800);
+  color: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  pointer-events: none;
+}
+
+.has-tooltip[data-tooltip-position="top"]::after {
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-10px);
+  margin-bottom: 5px;
+}
+
+.has-tooltip[data-tooltip-position="bottom"]::after {
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  margin-top: 5px;
+}
+
+.has-tooltip[data-tooltip-position="left"]::after {
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%) translateX(-10px);
+  margin-right: 5px;
+}
+
+.has-tooltip[data-tooltip-position="right"]::after {
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%) translateX(10px);
+  margin-left: 5px;
+}
+
+.has-tooltip:hover::after {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+.has-tooltip[data-tooltip-position="left"]:hover::after,
+.has-tooltip[data-tooltip-position="right"]:hover::after {
+  transform: translateY(-50%) translateX(0);
+}
+
+/* Microinteractions for buttons and inputs */
+
+/* Submit button animation */
+.submit-btn {
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  overflow: hidden;
+}
+
+.submit-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 7px 14px rgba(168, 85, 247, 0.3), 0 3px 6px rgba(168, 85, 247, 0.2);
+}
+
+.submit-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 3px 6px rgba(168, 85, 247, 0.2);
+}
+
+.submit-btn::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.5);
+  opacity: 0;
+  border-radius: 100%;
+  transform: scale(1, 1) translate(-50%);
+  transform-origin: 50% 50%;
+}
+
+.submit-btn:focus:not(:active)::after {
+  animation: ripple 1s ease-out;
+}
+
+/* Form interactions */
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  transform: translateY(-2px);
+  box-shadow: 0 0 0 3px rgba(90, 103, 216, 0.25);
+}
+
+/* Section transitions */
+.page-section {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.page-section.fadeout {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.page-section.fadein {
+  animation: fadein 0.4s ease forwards;
+}
+
+/* Nav button interactions */
+.nav-btn {
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.nav-btn:hover {
+  transform: translateX(5px) scale(1.02);
+}
+
+.nav-btn:active {
+  transform: scale(0.98);
+}
+
+/* Success animation for form submission */
+.form-submit-success {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeout 1s ease 1.5s forwards;
+}
+
+.success-checkmark {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background-color: var(--success);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: scale-up 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.success-checkmark i {
+  color: white;
+  font-size: 40px;
+  animation: check-appear 0.3s ease 0.2s backwards;
+}
+
+/* Animations */
+@keyframes pulse-highlight {
+  0% { box-shadow: 0 0 0 4px var(--primary), 0 0 0 8px rgba(90, 103, 216, 0.3); }
+  50% { box-shadow: 0 0 0 4px var(--primary), 0 0 0 12px rgba(90, 103, 216, 0.2); }
+  100% { box-shadow: 0 0 0 4px var(--primary), 0 0 0 8px rgba(90, 103, 216, 0.3); }
+}
+
+@keyframes tooltip-appear {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ripple {
+  0% {
+    opacity: 1;
+    transform: scale(0, 0);
+  }
+  20% {
+    transform: scale(25, 25);
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(40, 40);
+  }
+}
+
+@keyframes fadein {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeout {
+  from { opacity: 1; }
+  to { opacity: 0; visibility: hidden; }
+}
+
+@keyframes scale-up {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
+}
+
+@keyframes check-appear {
+  from { opacity: 0; transform: scale(0); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Loading animations */
+.loading-spinner {
+  border: 4px solid rgba(90, 103, 216, 0.1);
+  border-left-color: var(--primary);
+  animation: spinner-rotation 1s linear infinite;
+}
+
+@keyframes spinner-rotation {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Enhanced result animations */
+.analysis-result {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.result-animated {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Sequential fade-in for factors */
+.factor-card {
+  opacity: 0;
+  animation: factor-appear 0.5s ease forwards;
+}
+
+.factor-card:nth-child(1) { animation-delay: 0.1s; }
+.factor-card:nth-child(2) { animation-delay: 0.2s; }
+.factor-card:nth-child(3) { animation-delay: 0.3s; }
+.factor-card:nth-child(4) { animation-delay: 0.4s; }
+.factor-card:nth-child(5) { animation-delay: 0.5s; }
+
+@keyframes factor-appear {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Mobile-friendly adjustments */
+@media (max-width: 768px) {
+  .tour-tooltip {
+    width: 85vw;
+    max-width: 400px;
+  }
+  
+  .tooltip-footer {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .tooltip-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
