@@ -47,16 +47,21 @@ async function callGeminiAPI(inputs) {
       const data = await response.json();
       console.log("Gemini AI response:", data);
 
-      // If user typed no name or "Unknown Item", fill with recognized results
-      if ((!inputs.itemName || inputs.itemName === "Unknown Item") && data.name && data.name !== "Unknown") {
-        inputs.itemName = data.name;
-        recognizedImage = true;
-      }
-      
-      // If user provided no cost or zero cost, use the AI-detected cost
-      if ((!inputs.itemCost || inputs.itemCost <= 0) && data.cost) {
-        inputs.itemCost = data.cost;
-        recognizedImage = true;
+      // If Gemini successfully identified the item with a name
+      if (data.name && data.name !== "Unknown") {
+        // Use AI-detected name if input field is empty, default, or "Unknown Item"
+        if (!inputs.itemName || inputs.itemName === "" || 
+            inputs.itemName === "Unknown Item" || 
+            inputs.itemName === "New Laptop") { // Default value in form
+          inputs.itemName = data.name;
+          recognizedImage = true;
+        }
+        
+        // If user provided no cost or zero cost, use the AI-detected cost
+        if ((!inputs.itemCost || parseFloat(inputs.itemCost) <= 0) && data.cost) {
+          inputs.itemCost = data.cost;
+          recognizedImage = true;
+        }
       }
     }
 
