@@ -184,8 +184,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const originalBtnText = submitBtn.textContent;
         submitBtn.textContent = 'Logging in...';
 
-        // Make API call to login endpoint
-        const response = await fetch(`${API_BASE_URL}/Login`, {
+        // Make API call to login endpoint - Note: proper API path with correct case
+        console.log('Calling login endpoint:', `${API_BASE_URL}/login`);
+        const response = await fetch(`${API_BASE_URL}/login`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -263,8 +264,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const originalBtnText = submitBtn.textContent;
         submitBtn.textContent = 'Signing up...';
 
-        // Make API call to register endpoint
-        const response = await fetch(`${API_BASE_URL}/Register`, {
+        // Make API call to register endpoint - Note: proper API path with correct case
+        console.log('Calling registration endpoint:', `${API_BASE_URL}/register`);
+        const response = await fetch(`${API_BASE_URL}/register`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
