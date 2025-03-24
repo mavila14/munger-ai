@@ -8,16 +8,14 @@
 document.addEventListener('DOMContentLoaded', () => {
     // Nav buttons
     const navBasicBtn = document.getElementById("nav-basic");
-    const navAdvancedBtn = document.getElementById("nav-advanced");
     const navProfileBtn = document.getElementById("nav-profile");
     
     // Pages/sections
     const basicSection = document.getElementById("basic-section");
-    const advancedSection = document.getElementById("advanced-section");
     const profileSection = document.getElementById("profile-section");
     
     // Check if we're on the index or profile page
-    const isIndexPage = basicSection && advancedSection;
+    const isIndexPage = basicSection;
     const isProfilePage = profileSection;
     
     // Nav button click handlers - only set if we're on the index page
@@ -40,29 +38,6 @@ document.addEventListener('DOMContentLoaded', () => {
           // We'll set the active tab via localStorage
           localStorage.setItem('activeTab', 'basic');
         });
-      }
-      
-      if (navAdvancedBtn) {
-        navAdvancedBtn.addEventListener("click", () => {
-          window.location.href = 'index.html';
-          localStorage.setItem('activeTab', 'advanced');
-        });
-      }
-    }
-    
-    // Check for stored active tab when loading index page
-    if (isIndexPage) {
-      const activeTab = localStorage.getItem('activeTab');
-      if (activeTab) {
-        // Clear the stored tab
-        localStorage.removeItem('activeTab');
-        
-        // Activate the right tab
-        if (activeTab === 'advanced' && navAdvancedBtn) {
-          navAdvancedBtn.click();
-        } else if (activeTab === 'basic' && navBasicBtn) {
-          navBasicBtn.click();
-        }
       }
     }
     
@@ -140,4 +115,4 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Run the profile completion indicator
     addProfileCompletionIndicator();
-  });
+});
