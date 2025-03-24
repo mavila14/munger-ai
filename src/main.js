@@ -128,8 +128,11 @@ document.addEventListener("DOMContentLoaded", () => {
         // Show final decision with explanation
         basicResultDiv.innerHTML = `
           <div class="analysis-result">
-            <h3>Item: ${finalData.itemName || "Unknown Item"}</h3>
-            <p>Estimated Cost: $${(parseFloat(finalData.itemCost) || 0).toFixed(2)}</p>
+            <div class="item-details">
+              <h3>${finalData.itemName || "Unknown Item"}</h3>
+              <p class="item-cost">Estimated Cost: ${(parseFloat(finalData.itemCost) || 0).toFixed(2)}</p>
+              ${finalData.itemFacts ? `<p class="item-facts">${finalData.itemFacts}</p>` : ''}
+            </div>
             <div class="decision-box">
               <h2 class="recommendation ${
                 finalData.finalDecision === "Buy" ? "positive" : "negative"
