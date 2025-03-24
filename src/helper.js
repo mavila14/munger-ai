@@ -17,6 +17,8 @@ const Config = {
  */
 async function callGeminiAPI(inputs) {
   try {
+    let recognizedImage = false;
+    
     if (inputs.imageBase64) {
       console.log("Calling Gemini AI with image...");
       const response = await fetch("/api/analyze-image", {
@@ -32,49 +34,63 @@ async function callGeminiAPI(inputs) {
       const data = await response.json();
       console.log("Gemini AI response:", data);
 
-      // If user typed no name/cost, fill with recognized results
-      if ((!inputs.itemName || inputs.itemName === "Unnamed") && data.name) {
+      // If user typed no name, fill with recognized results
+      if ((!inputs.itemName || inputs.itemName === "Unnamed") && data.name && data.name !== "Unknown") {
         inputs.itemName = data.name;
+        recognizedImage = true;
       }
+      
+      // If user provided no cost or zero cost, use the AI-detected cost
       if ((!inputs.itemCost || inputs.itemCost <= 0) && data.cost) {
         inputs.itemCost = data.cost;
+        recognizedImage = true;
       }
     }
 
-    // Return final decision
-    return decide(inputs);
+    // Generate an explanation and final decision
+    return decideWithExplanation(inputs, recognizedImage);
   } catch (error) {
     console.error("Error calling Gemini AI, falling back to user data:", error);
-    return decide(inputs);
+    return decideWithExplanation(inputs, false);
   }
 }
 
 /**
- * Very simple logic:
+ * Makes the decision and generates an explanation
  * - If user has high-interest debt => "Don't Buy"
  * - Else if (cost / leftoverIncome < 0.3) => "Buy"
  * - Otherwise => "Don't Buy"
  */
-function decide(inputs) {
-  const { itemCost = 0, leftoverIncome = 1, hasHighInterestDebt = "No" } = inputs;
-
+function decideWithExplanation(inputs, recognizedImage) {
+  const { itemName = "Unnamed Item", itemCost = 0, leftoverIncome = 1, hasHighInterestDebt = "No" } = inputs;
+  let finalDecision = "Don't Buy";
+  let explanation = "";
+  
+  // Generate explanations based on decision factors
   if (hasHighInterestDebt === "Yes") {
-    return {
-      finalDecision: "Don't Buy",
-      ...inputs
-    };
+    finalDecision = "Don't Buy";
+    explanation = `Pay off your high-interest debt before purchasing this ${itemName}.`;
+  } else {
+    const ratio = itemCost / leftoverIncome;
+    const percentOfIncome = Math.round(ratio * 100);
+    
+    if (ratio < Config.BUY_RATIO_THRESHOLD) {
+      finalDecision = "Buy";
+      explanation = `This ${itemName} costs only ${percentOfIncome}% of your monthly disposable income.`;
+    } else {
+      finalDecision = "Don't Buy";
+      explanation = `This ${itemName} costs ${percentOfIncome}% of your monthly disposable income, which exceeds our recommended threshold.`;
+    }
   }
-
-  const ratio = itemCost / leftoverIncome;
-  if (ratio < Config.BUY_RATIO_THRESHOLD) {
-    return {
-      finalDecision: "Buy",
-      ...inputs
-    };
+  
+  // Include info about AI recognition if applicable
+  if (recognizedImage) {
+    explanation = `AI recognized a ${itemName}. ${explanation}`;
   }
 
   return {
-    finalDecision: "Don't Buy",
+    finalDecision,
+    explanation,
     ...inputs
   };
 }
