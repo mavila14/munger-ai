@@ -42,16 +42,21 @@ module.exports = async function (context, req) {
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
     const instructions = `
-      Look at the following image and identify a single consumer item in it.
-      Be specific about what the item is (e.g., "Sony WH-1000XM4 Headphones" not just "Headphones").
-      Estimate an approximate cost in USD.
+      Look at the following image and identify the consumer item shown.
+      Be very specific and detailed about what you see (e.g., "Apple iPhone 14 Pro" rather than just "smartphone").
+      
+      Your task is to:
+      1. Identify the exact item with brand and model if visible
+      2. Estimate a realistic cost in USD 
+      
       Return only valid JSON in the format:
       {
-        "name": "<specific item name>",
-        "cost": <number>
+        "name": "<specific item name with brand if visible>",
+        "cost": <estimated cost as a number>
       }
       
-      If you cannot confidently identify the item, use "Unknown" as the name.
+      If you cannot confidently identify the specific item, provide your best guess with whatever details you can see (color, style, approximate type).
+      Only use "Unknown" as the name if the image is completely unrecognizable.
     `.trim();
 
     const inlinePart = {
