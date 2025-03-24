@@ -16,9 +16,13 @@ document.addEventListener("DOMContentLoaded", () => {
     basicForm.addEventListener("submit", async (e) => {
       e.preventDefault();
 
-      // Quick validation
-      const itemName = document.getElementById("basic-item-name").value.trim() || "Unknown Item";
-      const itemCost = parseFloat(document.getElementById("basic-item-cost").value) || 0;
+      // Get values with proper validation
+      const itemNameInput = document.getElementById("basic-item-name");
+      const itemCostInput = document.getElementById("basic-item-cost");
+      
+      // Trim input values and provide proper defaults
+      const itemName = itemNameInput.value.trim() || "Unknown Item";
+      const itemCost = parseFloat(itemCostInput.value) || 0;
 
       // Check for an image
       const fileInput = document.getElementById("basic-item-image");
@@ -81,7 +85,7 @@ document.addEventListener("DOMContentLoaded", () => {
         basicResultDiv.innerHTML = `
           <div class="analysis-result">
             <h3>Item: ${finalData.itemName || "Unknown Item"}</h3>
-            <p>Estimated Cost: $${finalData.itemCost?.toFixed(2) || 0}</p>
+            <p>Estimated Cost: $${(parseFloat(finalData.itemCost) || 0).toFixed(2)}</p>
             <div class="decision-box">
               <h2 class="recommendation ${
                 finalData.finalDecision === "Buy" ? "positive" : "negative"
