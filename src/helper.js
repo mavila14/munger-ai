@@ -47,8 +47,8 @@ async function callGeminiAPI(inputs) {
       const data = await response.json();
       console.log("Gemini AI response:", data);
 
-      // If user typed no name, fill with recognized results
-      if ((!inputs.itemName || inputs.itemName === "Unnamed") && data.name && data.name !== "Unknown") {
+      // If user typed no name or "Unknown Item", fill with recognized results
+      if ((!inputs.itemName || inputs.itemName === "Unknown Item") && data.name && data.name !== "Unknown") {
         inputs.itemName = data.name;
         recognizedImage = true;
       }
@@ -80,7 +80,7 @@ async function callGeminiAPI(inputs) {
 function advancedDecisionAlgorithm(inputs, recognizedImage) {
   // Extract all inputs with defaults
   const { 
-    itemName = "Unnamed Item",
+    itemName = "Unknown Item",
     itemCost = 0,
     leftoverIncome = 1000, // Default disposable income
     hasHighInterestDebt = "No",
@@ -88,7 +88,7 @@ function advancedDecisionAlgorithm(inputs, recognizedImage) {
     monthlyIncome = 4000, // Default monthly income assumption
     monthlyExpenses = 3000, // Default monthly expenses assumption
     emergencyFund = 0,
-    financialGoal = "", // User's primary financial goal
+    financialGoal = "",
     highInterestDebt = 0,
     lowInterestDebt = 0,
     monthlySavings = 0
@@ -97,16 +97,18 @@ function advancedDecisionAlgorithm(inputs, recognizedImage) {
   // Calculate derived financial metrics
   const totalDebt = parseFloat(highInterestDebt) + parseFloat(lowInterestDebt);
   const debtToIncomeRatio = totalDebt > 0 ? totalDebt / (parseFloat(monthlyIncome) * 12) : 0;
-  const emergencyFundMonths = parseFloat(monthlyExpenses) > 0 ? 
-    parseFloat(emergencyFund) / parseFloat(monthlyExpenses) : 0;
+  const emergencyFundMonths = parseFloat(monthlyExpenses) > 0 
+    ? parseFloat(emergencyFund) / parseFloat(monthlyExpenses) 
+    : 0;
   
   // Purchase as percentage of disposable income
-  const disposableIncomeRatio = parseFloat(leftoverIncome) > 0 ? 
-    parseFloat(itemCost) / parseFloat(leftoverIncome) : 1;
+  const disposableIncomeRatio = parseFloat(leftoverIncome) > 0
+    ? parseFloat(itemCost) / parseFloat(leftoverIncome)
+    : 1;
     
   // Detection of item necessity (simplified approximation based on keywords)
   const necessityKeywords = [
-    'refrigerator', 'stove', 'oven', 'microwave', 'heating', 'cooling', 'laptop', 'computer', 
+    'refrigerator', 'stove', 'oven', 'microwave', 'heating', 'cooling', 'laptop', 'computer',
     'medicine', 'phone', 'mattress', 'bed', 'chair', 'desk', 'glasses', 'contacts', 'shoes',
     'coat', 'jacket', 'winter', 'washer', 'dryer', 'cookware', 'pan', 'pot'
   ];
@@ -146,9 +148,9 @@ function advancedDecisionAlgorithm(inputs, recognizedImage) {
   }
   
   // 3. Income evaluation - based on purchase to disposable income ratio
-  const incomeThreshold = isNecessity ? 
-    Config.NECESSITIES_SPENDING_MAX : 
-    Config.DISCRETIONARY_SPENDING_MAX;
+  const incomeThreshold = isNecessity 
+    ? Config.NECESSITIES_SPENDING_MAX 
+    : Config.DISCRETIONARY_SPENDING_MAX;
     
   if (disposableIncomeRatio > incomeThreshold * 2) {
     // Way too expensive for income
