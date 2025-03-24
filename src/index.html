@@ -7,6 +7,7 @@
 
   <!-- Main Styles -->
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="onboarding.css" />
 
   <!-- Plotly for charts -->
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
@@ -33,8 +34,8 @@
       
       <!-- Navigation -->
       <nav class="sidebar-nav">
-        <button id="nav-basic" class="nav-btn active">Decision Tool</button>
-        <button id="nav-profile" class="nav-btn">My Profile</button>
+        <button id="nav-basic" class="nav-btn active" data-tooltip="Make quick purchase decisions" data-tooltip-position="right">Decision Tool</button>
+        <button id="nav-profile" class="nav-btn" data-tooltip="Set up your financial profile" data-tooltip-position="right">My Profile</button>
         <hr />
         <div class="quick-tips">
           <h4>Quick Tips</h4>
@@ -109,7 +110,7 @@
             <div class="input-tip">Upload a photo and let our AI analyze your item</div>
           </div>
 
-          <button type="submit" class="submit-btn">Should I Buy It?</button>
+          <button type="submit" class="submit-btn" data-tooltip="Get your purchase recommendation" data-tooltip-position="top">Should I Buy It?</button>
         </form>
 
         <div id="basic-result"></div>
@@ -127,5 +128,6 @@
   <script src="main.js"></script>
   <script src="user-auth.js"></script>
   <script src="navigation-updates.js"></script>
+  <script src="onboarding.js"></script>
 </body>
 </html>
