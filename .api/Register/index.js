@@ -4,6 +4,7 @@ const { userStore } = require('../shared/userStore');
 module.exports = async function (context, req) {
   context.log('Register function triggered');
 
+  // Expect POST /api/register
   if (req.method !== 'POST') {
     context.res = { status: 405, body: 'Method Not Allowed' };
     return;
