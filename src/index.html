@@ -29,6 +29,7 @@
           <ul>
             <li>Enter item &amp; cost</li>
             <li>Upload a photo for AI analysis</li>
+            <li>Or take a photo on mobile</li>
             <li>See final decision: "Buy" or "Don't Buy"</li>
           </ul>
         </div>
@@ -83,12 +84,29 @@
 
           <div class="form-group">
             <label for="basic-item-image">Image of the Item</label>
-            <input 
-              type="file"
-              id="basic-item-image"
-              accept="image/*"
-            />
-            <div class="input-tip">Upload a photo and let our AI analyze your item</div>
+            <div class="image-upload-container">
+              <input 
+                type="file"
+                id="basic-item-image"
+                accept="image/*"
+                capture="environment"
+              />
+              <div class="camera-options">
+                <button type="button" id="camera-button" class="camera-btn">
+                  <i class="fas fa-camera"></i> Take Photo
+                </button>
+                <button type="button" id="upload-button" class="upload-btn">
+                  <i class="fas fa-upload"></i> Upload Image
+                </button>
+              </div>
+              <div id="image-preview" class="image-preview hidden">
+                <img id="preview-img" src="#" alt="Preview" />
+                <button type="button" id="remove-image" class="remove-btn">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+            <div class="input-tip">Upload a photo or take a picture with your camera and let our AI analyze your item</div>
           </div>
 
           <button type="submit" class="submit-btn">Should I Buy It?</button>
