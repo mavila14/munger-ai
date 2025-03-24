@@ -212,7 +212,9 @@ function advancedDecisionAlgorithm(inputs, recognizedImage) {
     incomeFactor,
     necessityFactor,
     finalScore,
-    isNecessity
+    isNecessity,
+    itemName,
+    recognizedImage
   });
 
   return {
@@ -245,10 +247,13 @@ function generateExplanation(factors) {
   // Format percentage for disposable income
   const percentOfIncome = Math.round(disposableIncomeRatio * 100);
   
-  let explanation = recognizedImage 
-    ? `AI recognized this as a ${itemName}. `
-    : "";
-    
+  // Start explanation with AI recognition if applicable
+  let explanation = "";
+  
+  if (recognizedImage) {
+    explanation = `AI has analyzed your image and identified it as a ${itemName}. `;
+  }
+  
   // Primary factor determination (lowest factor has biggest impact on decision)
   const lowestFactor = Math.min(debtFactor, savingsFactor, incomeFactor);
   
