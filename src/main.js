@@ -3,7 +3,7 @@
  *
  * Main logic for basic tool:
  *  1) Optionally call Gemini to parse item image.
- *  2) Show final decision: "Buy" or "Don't Buy."
+ *  2) Show final decision: "Buy" or "Don't Buy" with advanced reasoning.
  ***************************************************************/
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -27,17 +27,38 @@ document.addEventListener("DOMContentLoaded", () => {
         imageBase64 = await toBase64(fileInput.files[0]);
       }
 
-      // Optionally load user profile
-      let leftoverIncome = 2000;
-      let hasHighInterestDebt = "No";
+      // Get user financial profile data if available
+      let profileData = {
+        leftoverIncome: 2000,
+        hasHighInterestDebt: "No",
+        monthlyIncome: 4000,
+        monthlyExpenses: 3000,
+        emergencyFund: 6000,
+        highInterestDebt: 0,
+        lowInterestDebt: 0,
+        monthlySavings: 500,
+        financialGoal: ""
+      };
+      
       try {
         if (window.UserProfile && typeof window.UserProfile.getUserFinancialProfile === 'function') {
-          const profileData = window.UserProfile.getUserFinancialProfile();
-          if (profileData?.disposableIncome) {
-            leftoverIncome = parseFloat(profileData.disposableIncome);
-          }
-          if (profileData?.highInterestDebt && parseFloat(profileData.highInterestDebt) > 0) {
-            hasHighInterestDebt = "Yes";
+          const userProfile = window.UserProfile.getUserFinancialProfile();
+          if (userProfile) {
+            // Override defaults with actual user data
+            profileData = {
+              ...profileData,
+              ...userProfile
+            };
+            
+            // Make sure we have disposable income
+            if (userProfile.monthlyIncome && userProfile.monthlyExpenses) {
+              profileData.leftoverIncome = parseFloat(userProfile.monthlyIncome) - parseFloat(userProfile.monthlyExpenses);
+            }
+            
+            // Set high interest debt flag
+            if (userProfile.highInterestDebt && parseFloat(userProfile.highInterestDebt) > 0) {
+              profileData.hasHighInterestDebt = "Yes";
+            }
           }
         }
       } catch (error) {
@@ -48,13 +69,12 @@ document.addEventListener("DOMContentLoaded", () => {
       basicResultDiv.innerHTML = renderLoadingState();
 
       try {
-        // Decide
+        // Decide using the advanced algorithm
         const finalData = await callGeminiAPI({
           itemName,
           itemCost,
           imageBase64,
-          leftoverIncome,
-          hasHighInterestDebt
+          ...profileData
         });
 
         // Show final decision with explanation
@@ -68,6 +88,7 @@ document.addEventListener("DOMContentLoaded", () => {
               }">${finalData.finalDecision}</h2>
               <p class="ai-explanation">${finalData.explanation || ""}</p>
             </div>
+            ${renderDecisionFactors(finalData)}
           </div>
         `;
       } catch (err) {
@@ -83,6 +104,24 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
+/**
+ * Renders decision factors if available
+ */
+function renderDecisionFactors(data) {
+  if (!data.finalScore) return '';
+  
+  return `
+    <div class="decision-factors">
+      <h4>Financial Confidence Score: ${(data.finalScore * 100).toFixed(0)}%</h4>
+      <div class="confidence-bar">
+        <div class="confidence-progress" style="width: ${data.finalScore * 100}%; 
+          background-color: ${data.finalScore >= 0.65 ? '#48bb78' : '#f56565'};">
+        </div>
+      </div>
+    </div>
+  `;
+}
 
 /** Convert file => Base64 */
 async function toBase64(file) {
