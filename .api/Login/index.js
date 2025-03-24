@@ -8,6 +8,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'LOCAL_SECRET_KEY';
 module.exports = async function (context, req) {
   context.log('Login function triggered');
 
+  // Expect POST /api/login
   if (req.method !== 'POST') {
     context.res = { status: 405, body: 'Method Not Allowed' };
     return;
