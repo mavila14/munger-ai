@@ -3,7 +3,7 @@
  *
  * Main logic for basic tool:
  *  1) Optionally call Gemini to parse item image.
- *  2) Show final decision: "Strong Buy" or "Don't Buy."
+ *  2) Show final decision: "Buy" or "Don't Buy."
  ***************************************************************/
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -64,7 +64,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <p>Estimated Cost: $${finalData.itemCost?.toFixed(2) || 0}</p>
             <div class="decision-box">
               <h2 class="recommendation ${
-                finalData.finalDecision === "Strong Buy" ? "positive" : "negative"
+                finalData.finalDecision === "Buy" ? "positive" : "negative"
               }">${finalData.finalDecision}</h2>
             </div>
           </div>
