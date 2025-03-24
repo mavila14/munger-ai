@@ -23,7 +23,6 @@
       <!-- Navigation -->
       <nav class="sidebar-nav">
         <button id="nav-basic" class="nav-btn">Decision Tool</button>
-        <button id="nav-advanced" class="nav-btn">Advanced Tool</button>
         <button id="nav-profile" class="nav-btn active">My Profile</button>
         <hr />
         <div class="quick-tips">
@@ -183,7 +182,7 @@
           
           <div class="form-group">
             <label for="custom-notes">Additional Notes</label>
-            <textarea id="custom-notes" name="customNotes" rows="3" placeholder="Any additional financial information that might help with purchase decisions..."></textarea>
+            <textarea id="custom-notes" name="customNotes" rows="3" placeholder="Any additional financial information that might help with purchase decisions..." data-optional="true"></textarea>
           </div>
           
           <div class="form-actions">
@@ -220,6 +219,7 @@
   <script src="helper.js"></script>
   <script src="main.js"></script>
   <script src="user-auth.js"></script>
+  <script src="navigation-updates.js"></script>
   <script src="user-profile.js"></script>
 </body>
 </html>
