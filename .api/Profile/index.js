@@ -6,10 +6,13 @@ const JWT_SECRET = process.env.JWT_SECRET || 'LOCAL_SECRET_KEY';
 module.exports = async function (context, req) {
   context.log('Profile data function triggered');
 
-  // Expect 'Authorization: Bearer <token>'
+  // A typical approach: "Authorization: Bearer <token>"
   const authHeader = req.headers['authorization'] || '';
   const token = authHeader.split(' ')[1];
+
+  // Because we used "authLevel": "anonymous", you must do your own check:
   if (!token) {
+    // No token provided
     context.res = { status: 401, body: { error: 'Missing token' } };
     return;
   }
