@@ -2,12 +2,12 @@
  * main.js
  *
  * Main application logic with enhanced functionality
- * - Image upload in the advanced tool
- * - Hide advanced tool if user profile is complete
+ * - Basic screen has image upload that calls Gemini
+ * - If user leaves item name/cost blank, we fill them from Gemini
+ * - Then we do the "Should I Buy It?" factor analysis
  ***************************************************************/
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Access helper functions from the global object
   const {
     callGeminiAPI,
     computePDS,
@@ -17,7 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
     Config
   } = window.AppHelpers || {};
 
-  // Grab references to key elements
+  // DOM references
   const navBasicBtn = document.getElementById("nav-basic");
   const navAdvancedBtn = document.getElementById("nav-advanced");
   const basicSection = document.getElementById("basic-section");
@@ -27,26 +27,15 @@ document.addEventListener("DOMContentLoaded", () => {
   const basicResultDiv = document.getElementById("basic-result");
   const advancedResultDiv = document.getElementById("advanced-result");
 
-  // Hide advanced tool if user is signed in + profile is complete
   hideAdvancedToolIfProfileComplete();
-
-  // Initialize tooltips (optional, if you have them)
   initializeTooltips();
 
-  // Navigation button click events
   if (navBasicBtn) {
     navBasicBtn.addEventListener("click", () => {
       navBasicBtn.classList.add("active");
-      if (navAdvancedBtn) {
-        navAdvancedBtn.classList.remove("active");
-      }
+      if (navAdvancedBtn) navAdvancedBtn.classList.remove("active");
       basicSection.classList.remove("hidden");
       advancedSection.classList.add("hidden");
-      // Animate transition
-      basicSection.style.animation = "fadeIn 0.3s";
-      setTimeout(() => {
-        basicSection.style.animation = "";
-      }, 300);
     });
   }
 
@@ -56,53 +45,39 @@ document.addEventListener("DOMContentLoaded", () => {
       navAdvancedBtn.classList.add("active");
       basicSection.classList.add("hidden");
       advancedSection.classList.remove("hidden");
-      // Animate transition
-      advancedSection.style.animation = "fadeIn 0.3s";
-      setTimeout(() => {
-        advancedSection.style.animation = "";
-      }, 300);
     });
   }
 
-  // Initialize form validation
-  if (basicForm) initializeFormValidation(basicForm);
-  if (advancedForm) initializeFormValidation(advancedForm);
-
-  /**************************************************
-   * BASIC FORM SUBMISSION
-   **************************************************/
+  // Basic Form
   if (basicForm) {
+    initializeFormValidation(basicForm);
     basicForm.addEventListener("submit", async (e) => {
-      e.preventDefault(); // prevent page reload
-
-      // Validate form
+      e.preventDefault();
       if (!basicForm.checkValidity()) {
         showValidationMessages(basicForm);
         return;
       }
-
-      // Collect user input
-      const itemName =
-        document.getElementById("basic-item-name").value.trim() || "Unnamed";
-      const itemCost =
-        parseFloat(document.getElementById("basic-item-cost").value) || 0;
-
-      // Show loading state
       basicResultDiv.innerHTML = renderLoadingState();
 
-      // Scroll to results
-      setTimeout(() => {
-        basicResultDiv.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 100);
-
       try {
-        // Provide default leftover income etc.
+        // Gather user inputs
+        let itemName = document.getElementById("basic-item-name").value.trim() || "Unnamed";
+        let itemCost = parseFloat(document.getElementById("basic-item-cost").value) || 0;
+
+        // Check for image
+        const fileInput = document.getElementById("basic-item-image");
+        let base64Image = "";
+        if (fileInput.files && fileInput.files[0]) {
+          base64Image = await toBase64(fileInput.files[0]);
+        }
+
+        // Provide default leftover income
         const leftoverIncome = Math.max(1000, itemCost * 2);
         const hasHighInterestDebt = "No";
         const mainFinancialGoal = "Save for emergencies";
         const purchaseUrgency = "Mixed";
 
-        // Call the Gemini API
+        // Call the Gemini-based analysis
         const factors = await callGeminiAPI({
           leftoverIncome,
           hasHighInterestDebt,
@@ -110,17 +85,17 @@ document.addEventListener("DOMContentLoaded", () => {
           purchaseUrgency,
           itemName,
           itemCost,
-          extraContext: ""
+          imageBase64
         });
 
-        // Compute PDS and recommendation
+        // Compute PDS
         const pds = computePDS(factors);
         const { text: recText, cssClass: recClass } = getRecommendation(pds);
 
-        // Render the result
+        // Render
         basicResultDiv.innerHTML = `
           <div class="analysis-result">
-            ${renderItemCard(itemName, itemCost)}
+            ${renderItemCard(factors.itemName || itemName, factors.itemCost || itemCost)}
             <div class="result-grid">
               <div class="result-column decision-column">
                 ${renderDecisionBox(pds, recText, recClass)}
@@ -135,38 +110,30 @@ document.addEventListener("DOMContentLoaded", () => {
           </div>
         `;
 
-        // Render factor cards
+        // Factor details
         const factorsDiv = document.getElementById("basic-factors");
         factorsDiv.innerHTML = `<h3>Decision Factors</h3>`;
-
-        for (const factor of ["D", "O", "G", "L", "B"]) {
+        for (const factor of ["D","O","G","L","B"]) {
           const val = factors[factor] || 0;
-          factorsDiv.innerHTML += renderFactorCard(
-            factor,
-            val,
-            Config.FACTOR_LABELS[factor]
-          );
-
-          // Add explanation if available
-          const explanationKey = `${factor}_explanation`;
+          factorsDiv.innerHTML += renderFactorCard(factor, val, Config.FACTOR_LABELS[factor]);
+          const explanationKey = factor + "_explanation";
           if (factors[explanationKey]) {
             factorsDiv.innerHTML += `<div class="factor-explanation">${factors[explanationKey]}</div>`;
           }
         }
 
-        // Create Plotly charts
+        // Plotly
         setTimeout(() => {
           createRadarChart("basic-radar", factors);
           createPdsGauge("basic-gauge", pds);
-          // Animate
           document.querySelector(".analysis-result")?.classList.add("result-animated");
         }, 100);
-      } catch (error) {
-        console.error("Error in analysis:", error);
+      } catch (err) {
+        console.error("Error in basic analysis:", err);
         basicResultDiv.innerHTML = `
           <div class="error-message">
             <h3>Analysis Error</h3>
-            <p>We couldn't complete your analysis. Please try again later or contact support.</p>
+            <p>We couldn't complete your analysis. Please try again later.</p>
             <button class="retry-btn" onclick="location.reload()">Retry</button>
           </div>
         `;
@@ -174,46 +141,32 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  /**************************************************
-   * ADVANCED FORM SUBMISSION (with image upload)
-   **************************************************/
+  // Advanced Form (unchanged except it also can pass an image).
   if (advancedForm) {
+    initializeFormValidation(advancedForm);
     advancedForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-
-      // Validate form
       if (!advancedForm.checkValidity()) {
         showValidationMessages(advancedForm);
         return;
       }
-
-      // Show loading state
       advancedResultDiv.innerHTML = renderLoadingState();
-      setTimeout(() => {
-        advancedResultDiv.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 100);
 
       try {
-        // Collect user input
-        const itemName =
-          document.getElementById("adv-item-name").value.trim() || "Unnamed";
-        const itemCost =
-          parseFloat(document.getElementById("adv-item-cost").value) || 0;
-        const leftoverIncome =
-          parseFloat(document.getElementById("adv-leftover-income").value) || 0;
+        const itemName = document.getElementById("adv-item-name").value.trim() || "Unnamed";
+        const itemCost = parseFloat(document.getElementById("adv-item-cost").value) || 0;
+        const leftoverIncome = parseFloat(document.getElementById("adv-leftover-income").value) || 0;
         const hasDebt = document.getElementById("adv-debt").value;
         const mainGoal = document.getElementById("adv-goal").value;
         const urgency = document.getElementById("adv-urgency").value;
         const extraNotes = document.getElementById("adv-extra-notes").value;
 
-        // Image upload
         const fileInput = document.getElementById("adv-item-image");
         let base64Image = "";
         if (fileInput.files && fileInput.files[0]) {
           base64Image = await toBase64(fileInput.files[0]);
         }
 
-        // Call the Gemini API, passing the image
         const factors = await callGeminiAPI({
           leftoverIncome,
           hasHighInterestDebt: hasDebt,
@@ -222,16 +175,15 @@ document.addEventListener("DOMContentLoaded", () => {
           itemName,
           itemCost,
           extraContext: extraNotes,
-          imageBase64: base64Image
+          imageBase64
         });
 
         const pds = computePDS(factors);
         const { text: recText, cssClass: recClass } = getRecommendation(pds);
 
-        // Render result
         advancedResultDiv.innerHTML = `
           <div class="analysis-result">
-            ${renderItemCard(itemName, itemCost)}
+            ${renderItemCard(factors.itemName || itemName, factors.itemCost || itemCost)}
             <div class="result-grid">
               <div class="result-column decision-column">
                 ${renderDecisionBox(pds, recText, recClass)}
@@ -254,36 +206,28 @@ document.addEventListener("DOMContentLoaded", () => {
           </div>
         `;
 
-        // Factor cards
         const factorsDiv = document.getElementById("advanced-factors");
         factorsDiv.innerHTML = `<h3>Decision Factors</h3>`;
-
-        for (const factor of ["D", "O", "G", "L", "B"]) {
+        for (const factor of ["D","O","G","L","B"]) {
           const val = factors[factor] || 0;
-          factorsDiv.innerHTML += renderFactorCard(
-            factor,
-            val,
-            Config.FACTOR_LABELS[factor]
-          );
-          // Explanation
-          const explanationKey = `${factor}_explanation`;
+          factorsDiv.innerHTML += renderFactorCard(factor, val, Config.FACTOR_LABELS[factor]);
+          const explanationKey = factor + "_explanation";
           if (factors[explanationKey]) {
             factorsDiv.innerHTML += `<div class="factor-explanation">${factors[explanationKey]}</div>`;
           }
         }
 
-        // Plotly charts
         setTimeout(() => {
           createRadarChart("advanced-radar", factors);
           createPdsGauge("advanced-gauge", pds);
           document.querySelector(".analysis-result")?.classList.add("result-animated");
         }, 100);
-      } catch (error) {
-        console.error("Error in advanced analysis:", error);
+      } catch (err) {
+        console.error("Error in advanced analysis:", err);
         advancedResultDiv.innerHTML = `
           <div class="error-message">
             <h3>Analysis Error</h3>
-            <p>We couldn't complete your analysis. Please try again later or contact support.</p>
+            <p>We couldn't complete your analysis. Please try again later.</p>
             <button class="retry-btn" onclick="location.reload()">Retry</button>
           </div>
         `;
@@ -291,15 +235,15 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Handle any shared results in URL
+  // URL share
   loadFromUrlParams();
 });
 
 /***************************************************************
- * EXTRA HELPER FUNCTIONS
+ * Additional Helpers
  ***************************************************************/
 
-/** Convert a File to base64 encoding */
+// Convert file => Base64
 async function toBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -309,72 +253,54 @@ async function toBase64(file) {
   });
 }
 
-/** Hide advanced tool if user is logged in AND profile is complete */
 function hideAdvancedToolIfProfileComplete() {
   const token = localStorage.getItem("token");
-  if (!token) return; // user not logged in
-
+  if (!token) return;
   const username = localStorage.getItem("username");
   if (!username) return;
-
-  const savedProfile = localStorage.getItem(`profile_${username}`);
-  if (!savedProfile) return;
-
+  const profileDataStr = localStorage.getItem(`profile_${username}`);
+  if (!profileDataStr) return;
   try {
-    const profileData = JSON.parse(savedProfile);
-    if (isProfileComplete(profileData)) {
-      // Hide advanced nav + advanced section
-      const navAdvanced = document.getElementById("nav-advanced");
-      const advancedSection = document.getElementById("advanced-section");
-      if (navAdvanced) {
-        navAdvanced.style.display = "none";
-      }
-      if (advancedSection) {
-        advancedSection.classList.add("hidden");
-      }
+    const data = JSON.parse(profileDataStr);
+    if (isProfileComplete(data)) {
+      const navAdv = document.getElementById("nav-advanced");
+      const advSec = document.getElementById("advanced-section");
+      if (navAdv) navAdv.style.display = "none";
+      if (advSec) advSec.classList.add("hidden");
     }
   } catch (err) {
     console.error("Error checking profile completeness:", err);
   }
 }
 
-/** Decide if the profile is "complete" */
-function isProfileComplete(profileData) {
-  // Customize which fields are mandatory
+// Pick whichever fields must be set
+function isProfileComplete(data) {
   const requiredFields = [
-    "monthlyIncome",
-    "monthlyExpenses",
-    "emergencyFund",
-    "monthlySavings",
-    "retirementSavings",
-    "investmentAccounts",
-    "highInterestDebt",
-    "lowInterestDebt",
-    "financialGoal",
-    "riskProfile"
+    "monthlyIncome","monthlyExpenses","emergencyFund","monthlySavings",
+    "retirementSavings","investmentAccounts","highInterestDebt","lowInterestDebt",
+    "financialGoal","riskProfile"
   ];
   for (const field of requiredFields) {
-    if (!profileData[field] || profileData[field].toString().trim() === "") {
+    if (!data[field] || data[field].toString().trim() === "") {
       return false;
     }
   }
   return true;
 }
 
-/** The rest of these are your existing rendering & validation helpers */
 function initializeTooltips() {
-  // If you have tooltips, define them here...
+  // If you have tooltips, define them or remove this
 }
 
 function initializeFormValidation(form) {
-  form.querySelectorAll("input, select, textarea").forEach((element) => {
-    if (!element.hasAttribute("data-optional")) {
-      element.setAttribute("required", "");
+  form.querySelectorAll("input, select, textarea").forEach(el => {
+    if (!el.hasAttribute("data-optional")) {
+      el.setAttribute("required", "");
     }
-    element.addEventListener("invalid", function () {
+    el.addEventListener("invalid", function() {
       this.classList.add("invalid");
     });
-    element.addEventListener("input", function () {
+    el.addEventListener("input", function() {
       this.classList.remove("invalid");
       if (this.validity.valid) {
         this.classList.add("valid");
@@ -406,88 +332,75 @@ function loadFromUrlParams() {
     banner.innerHTML = `
       <div class="shared-result-content">
         <h3>Shared Result</h3>
-        <p>You're viewing a shared purchase decision for <strong>${item}</strong> with a score of <strong>${score}</strong>.</p>
+        <p>You're viewing a shared decision for <strong>${item}</strong> with a score of <strong>${score}</strong>.</p>
         <button class="create-own-btn" onclick="clearSharedResult()">Create Your Own</button>
       </div>
     `;
     document.body.insertBefore(banner, document.body.firstChild);
-
     const basicItemField = document.getElementById("basic-item-name");
-    if (basicItemField) {
-      basicItemField.value = item;
-    }
+    if (basicItemField) basicItemField.value = item;
   }
 }
 
 window.clearSharedResult = function () {
   const banner = document.querySelector(".shared-result-banner");
-  if (banner) {
-    banner.remove();
-  }
+  if (banner) banner.remove();
   window.history.replaceState({}, document.title, window.location.pathname);
 };
 
-function renderItemCard(itemName, cost) {
+function renderLoadingState() {
+  return `
+    <div class="loading-container">
+      <div class="loading-spinner"></div>
+      <h3>Analyzing with Munger AI + Gemini...</h3>
+      <p>Please wait while we identify your item and calculate your decision score.</p>
+    </div>
+  `;
+}
+
+// Renders a small card showing the item + cost
+function renderItemCard(name, cost) {
   let icon = "🛍️";
   if (cost >= 5000) icon = "💰";
   else if (cost >= 1000) icon = "💼";
 
-  const nameLower = itemName.toLowerCase();
-  if (
-    nameLower.includes("house") ||
-    nameLower.includes("home") ||
-    nameLower.includes("apartment")
-  ) {
-    icon = "🏠";
-  } else if (nameLower.includes("car") || nameLower.includes("vehicle")) {
-    icon = "🚗";
-  } else if (nameLower.includes("computer") || nameLower.includes("laptop")) {
-    icon = "💻";
-  } else if (nameLower.includes("phone") || nameLower.includes("mobile")) {
-    icon = "📱";
-  }
+  const lower = (name || "").toLowerCase();
+  if (lower.includes("house") || lower.includes("home")) icon = "🏠";
+  else if (lower.includes("car") || lower.includes("vehicle")) icon = "🚗";
+  else if (lower.includes("laptop") || lower.includes("computer")) icon = "💻";
 
   return `
     <div class="item-card">
       <div class="item-icon">${icon}</div>
       <div class="item-details">
-        <div class="item-name">${itemName}</div>
+        <div class="item-name">${name}</div>
       </div>
       <div class="item-cost">
-        $${cost.toLocaleString("en-US", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2
-        })}
+        $${cost.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
       </div>
     </div>
   `;
 }
 
 function renderDecisionBox(pds, recText, recClass) {
-  let scoreDescription = "";
-  if (pds >= 7) {
-    scoreDescription = "This looks like a great purchase!";
-  } else if (pds >= 5) {
-    scoreDescription = "This purchase aligns with your financial goals.";
-  } else if (pds >= 0) {
-    scoreDescription = "This purchase requires more consideration.";
-  } else if (pds >= -5) {
-    scoreDescription = "This purchase may not be advisable right now.";
-  } else {
-    scoreDescription = "This purchase is strongly discouraged.";
-  }
+  let desc = "";
+  if (pds >= 7) desc = "This looks like a great purchase!";
+  else if (pds >= 5) desc = "This purchase aligns with your financial goals.";
+  else if (pds >= 0) desc = "This purchase requires more consideration.";
+  else if (pds >= -5) desc = "This purchase may not be advisable right now.";
+  else desc = "This purchase is strongly discouraged.";
 
   return `
     <div class="decision-box">
       <h2>Purchase Decision Score</h2>
       <div class="score">${pds}</div>
       <div class="recommendation ${recClass}">${recText}</div>
-      <p class="score-description">${scoreDescription}</p>
+      <p class="score-description">${desc}</p>
     </div>
   `;
 }
 
-function renderFactorCard(factor, value, description) {
+function renderFactorCard(factor, value, desc) {
   let valClass = "neutral";
   if (value > 0) valClass = "positive";
   if (value < 0) valClass = "negative";
@@ -495,20 +408,10 @@ function renderFactorCard(factor, value, description) {
   return `
     <div class="factor-card">
       <div class="factor-letter">${factor}</div>
-      <div class="factor-description">${description}</div>
+      <div class="factor-description">${desc}</div>
       <div class="factor-value ${valClass}">
         ${value > 0 ? "+" + value : value}
       </div>
-    </div>
-  `;
-}
-
-function renderLoadingState() {
-  return `
-    <div class="loading-container">
-      <div class="loading-spinner"></div>
-      <h3>Analyzing with Munger AI...</h3>
-      <p>Crunching numbers and evaluating your decision factors</p>
     </div>
   `;
 }
