@@ -28,15 +28,19 @@ async function callGeminiAPI(inputs) {
   try {
     // If there's an image, let's call the serverless function to do real Gemini detection
     if (inputs.imageBase64) {
+      console.log("Calling Gemini AI with image...");
       const response = await fetch("/api/analyze-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imageBase64: inputs.imageBase64 })
       });
+      
       if (!response.ok) {
         throw new Error(`AnalyzeImage call failed: ${response.status} ${response.statusText}`);
       }
+      
       const data = await response.json();
+      console.log("Gemini AI response:", data);
 
       // If user typed a name/cost, that takes priority over the recognized version
       if ((!inputs.itemName || inputs.itemName === "Unnamed") && data.name) {
