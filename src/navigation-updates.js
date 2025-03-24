@@ -2,7 +2,7 @@
  * navigation-updates.js
  *
  * Handle navigation between different sections and pages
- * including the user profile page
+ * including the user profile page and mobile menu
  ***************************************************************/
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -14,9 +14,41 @@ document.addEventListener('DOMContentLoaded', () => {
     const basicSection = document.getElementById("basic-section");
     const profileSection = document.getElementById("profile-section");
     
+    // Mobile menu elements
+    const menuToggle = document.getElementById("menu-toggle");
+    const sidebar = document.querySelector("aside");
+    const closeSidebarBtn = document.querySelector(".close-sidebar-btn");
+    
     // Check if we're on the index or profile page
     const isIndexPage = basicSection;
     const isProfilePage = profileSection;
+    
+    // Mobile menu toggle
+    if (menuToggle) {
+        menuToggle.addEventListener("click", () => {
+            sidebar.classList.add("sidebar-open");
+            document.body.classList.add("sidebar-is-open");
+        });
+    }
+    
+    // Close sidebar button
+    if (closeSidebarBtn) {
+        closeSidebarBtn.addEventListener("click", () => {
+            sidebar.classList.remove("sidebar-open");
+            document.body.classList.remove("sidebar-is-open");
+        });
+    }
+    
+    // Close sidebar when clicking a navigation item on mobile
+    const navButtons = document.querySelectorAll(".nav-btn");
+    navButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+            if (window.innerWidth <= 768) {
+                sidebar.classList.remove("sidebar-open");
+                document.body.classList.remove("sidebar-is-open");
+            }
+        });
+    });
     
     // Nav button click handlers - only set if we're on the index page
     if (isIndexPage) {
@@ -40,6 +72,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
     }
+    
+    // Close sidebar when clicking outside on mobile
+    document.addEventListener("click", (e) => {
+        if (window.innerWidth <= 768 && 
+            sidebar.classList.contains("sidebar-open") && 
+            !sidebar.contains(e.target) && 
+            e.target !== menuToggle && 
+            !menuToggle.contains(e.target)) {
+            sidebar.classList.remove("sidebar-open");
+            document.body.classList.remove("sidebar-is-open");
+        }
+    });
     
     // Add profile completion indicator to the main index page
     // This gives users a nudge to complete their profile
