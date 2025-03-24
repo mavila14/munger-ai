@@ -1,8 +1,8 @@
 {
-    "IsEncrypted": false,
-    "Values": {
-      "FUNCTIONS_WORKER_RUNTIME": "node",
-      "AzureWebJobsStorage": "",
-      "JWT_SECRET": "LOCAL_SECRET_KEY"
-    }
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "AzureWebJobsStorage": "",
+    "JWT_SECRET": "LOCAL_SECRET_KEY"
   }
+}
