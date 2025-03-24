@@ -4,6 +4,7 @@
  * Main logic for basic tool:
  *  1) Optionally call Gemini to parse item image.
  *  2) Show final decision: "Buy" or "Don't Buy" with advanced reasoning.
+ *  3) Handle camera input on mobile devices.
  ***************************************************************/
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -11,6 +12,50 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const basicForm = document.getElementById("basic-form");
   const basicResultDiv = document.getElementById("basic-result");
+  const fileInput = document.getElementById("basic-item-image");
+  const cameraButton = document.getElementById("camera-button");
+  const uploadButton = document.getElementById("upload-button");
+  const imagePreview = document.getElementById("image-preview");
+  const previewImg = document.getElementById("preview-img");
+  const removeImageBtn = document.getElementById("remove-image");
+
+  // Check if the device has camera capabilities
+  const hasGetUserMedia = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  
+  // Setup camera and file upload buttons
+  if (hasGetUserMedia) {
+    cameraButton.addEventListener("click", () => {
+      fileInput.setAttribute("capture", "environment");
+      fileInput.click();
+    });
+  } else {
+    cameraButton.style.display = "none";
+  }
+
+  uploadButton.addEventListener("click", () => {
+    fileInput.removeAttribute("capture");
+    fileInput.click();
+  });
+
+  // Handle file selection for preview
+  if (fileInput) {
+    fileInput.addEventListener("change", async function() {
+      if (this.files && this.files[0]) {
+        const file = this.files[0];
+        previewImg.src = URL.createObjectURL(file);
+        imagePreview.classList.remove("hidden");
+      }
+    });
+  }
+
+  // Handle image removal
+  if (removeImageBtn) {
+    removeImageBtn.addEventListener("click", () => {
+      fileInput.value = "";
+      imagePreview.classList.add("hidden");
+      previewImg.src = "#";
+    });
+  }
 
   if (basicForm) {
     basicForm.addEventListener("submit", async (e) => {
@@ -25,7 +70,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const itemCost = parseFloat(itemCostInput.value) || 0;
 
       // Check for an image
-      const fileInput = document.getElementById("basic-item-image");
       let imageBase64 = "";
       if (fileInput && fileInput.files && fileInput.files[0]) {
         imageBase64 = await toBase64(fileInput.files[0]);
