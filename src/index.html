@@ -26,14 +26,13 @@
       <!-- Navigation -->
       <nav class="sidebar-nav">
         <button id="nav-basic" class="nav-btn active">Decision Tool</button>
-        <button id="nav-advanced" class="nav-btn">Advanced Tool</button>
         <button id="nav-profile" class="nav-btn">My Profile</button>
         <hr />
         <div class="quick-tips">
           <h4>Quick Tips</h4>
           <ul>
             <li>Enter item &amp; cost</li>
-            <li>Or use Advanced Tool</li>
+            <li>Upload a photo for AI analysis</li>
             <li>Score &gt;= 5 = buy</li>
           </ul>
         </div>
@@ -89,125 +88,22 @@
               </div>
             </div>
           </div>
+
+          <!-- IMAGE UPLOAD added to basic form -->
+          <div class="form-group">
+            <label for="basic-item-image">Image of the Item</label>
+            <input 
+              type="file" 
+              id="basic-item-image" 
+              accept="image/*"
+            />
+            <div class="input-tip">Upload a photo and let our AI analyze your item</div>
+          </div>
+
           <button type="submit" class="submit-btn">Should I Buy It?</button>
         </form>
 
         <div id="basic-result"></div>
-      </section>
-
-      <!-- Advanced Tool Section -->
-      <section id="advanced-section" class="page-section hidden">
-        <div class="section-header">
-          <div class="section-icon">⚙️</div>
-          <h2>Advanced Purchase Query</h2>
-        </div>
-        <p>Customize <strong>all</strong> parameters for a more precise analysis.</p>
-
-        <form id="advanced-form">
-          <h3>Purchase Details</h3>
-          <div class="form-row">
-            <div class="form-col">
-              <div class="form-group">
-                <label for="adv-item-name">Item Name</label>
-                <input 
-                  type="text" 
-                  id="adv-item-name" 
-                  value="High-End Laptop" 
-                  placeholder="e.g. New Car, House Renovation, etc." 
-                />
-              </div>
-            </div>
-            <div class="form-col">
-              <div class="form-group">
-                <label for="adv-item-cost">Item Cost ($)</label>
-                <input 
-                  type="number" 
-                  step="0.01" 
-                  min="0"
-                  id="adv-item-cost" 
-                  value="2000.00" 
-                  placeholder="0.00" 
-                />
-              </div>
-            </div>
-          </div>
-
-          <!-- IMAGE UPLOAD -->
-          <div class="form-group">
-            <label for="adv-item-image">Image of the Item</label>
-            <input 
-              type="file" 
-              id="adv-item-image" 
-              accept="image/*"
-            />
-            <div class="input-tip">Optional photo to show the AI more details</div>
-          </div>
-          <!-- END IMAGE UPLOAD -->
-
-          <h3>User-Financial Data</h3>
-          <div class="form-row">
-            <div class="form-col">
-              <div class="form-group">
-                <label for="adv-leftover-income">Monthly Leftover Income ($)</label>
-                <input 
-                  type="number" 
-                  step="0.01" 
-                  min="0" 
-                  id="adv-leftover-income" 
-                  value="1500.00" 
-                  placeholder="Money left after essential expenses"
-                />
-              </div>
-            </div>
-            <div class="form-col">
-              <div class="form-group">
-                <label for="adv-debt">High-Interest Debt?</label>
-                <select id="adv-debt">
-                  <option value="No" selected>No</option>
-                  <option value="Yes">Yes</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-col">
-              <div class="form-group">
-                <label for="adv-goal">Main Financial Goal</label>
-                <input 
-                  type="text" 
-                  id="adv-goal" 
-                  value="Build an emergency fund" 
-                  placeholder="e.g. Save for retirement, Pay off debt, etc."
-                />
-              </div>
-            </div>
-            <div class="form-col">
-              <div class="form-group">
-                <label for="adv-urgency">Purchase Urgency</label>
-                <select id="adv-urgency">
-                  <option value="Urgent Needs">Urgent Needs</option>
-                  <option value="Mixed" selected>Mixed</option>
-                  <option value="Mostly Wants">Mostly Wants</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <h3>Optional Extra Context</h3>
-          <div class="form-group">
-            <textarea 
-              id="adv-extra-notes" 
-              rows="4" 
-              placeholder="Any additional context or notes?"
-              data-optional="true"
-            ></textarea>
-          </div>
-
-          <button type="submit" class="submit-btn">Analyze My Purchase</button>
-        </form>
-
-        <div id="advanced-result"></div>
       </section>
     </main>
   </div>
