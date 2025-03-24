@@ -4,7 +4,6 @@ const { userStore } = require('../shared/userStore');
 module.exports = async function (context, req) {
   context.log('Register function triggered');
 
-  // Expect POST /api/register
   if (req.method !== 'POST') {
     context.res = { status: 405, body: 'Method Not Allowed' };
     return;
@@ -17,17 +16,13 @@ module.exports = async function (context, req) {
       return;
     }
 
-    // Check if user already exists
     const existingUser = userStore.find(u => u.username === username);
     if (existingUser) {
       context.res = { status: 400, body: { error: 'User already exists' } };
       return;
     }
 
-    // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Store user in memory
     userStore.push({ username, password: hashedPassword });
 
     context.res = { body: { message: 'User created successfully' } };
