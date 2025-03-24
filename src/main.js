@@ -5,6 +5,7 @@
  * - Basic screen has image upload that calls Gemini
  * - If user leaves item name/cost blank, we fill them from Gemini
  * - Then we do the "Should I Buy It?" factor analysis
+ * - Added microinteractions and animations for better UX
  ***************************************************************/
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -19,11 +20,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // DOM references
   const navBasicBtn = document.getElementById("nav-basic");
+  const navProfileBtn = document.getElementById("nav-profile");
   const basicSection = document.getElementById("basic-section");
   const basicForm = document.getElementById("basic-form");
   const basicResultDiv = document.getElementById("basic-result");
 
   initializeTooltips();
+  initializeAnimations();
 
   // Basic Form
   if (basicForm) {
@@ -34,7 +37,14 @@ document.addEventListener("DOMContentLoaded", () => {
         showValidationMessages(basicForm);
         return;
       }
-      basicResultDiv.innerHTML = renderLoadingState();
+      
+      // Show submit animation
+      showSubmitAnimation();
+      
+      // Show loading state with delay for smooth transition
+      setTimeout(() => {
+        basicResultDiv.innerHTML = renderLoadingState();
+      }, 500);
 
       try {
         // Gather user inputs
@@ -120,12 +130,12 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         }
 
-        // Plotly
+        // Plotly - with delay for smoother animation
         setTimeout(() => {
           createRadarChart("basic-radar", factors);
           createPdsGauge("basic-gauge", pds);
           document.querySelector(".analysis-result")?.classList.add("result-animated");
-        }, 100);
+        }, 300);
       } catch (err) {
         console.error("Error in basic analysis:", err);
         basicResultDiv.innerHTML = `
@@ -147,6 +157,71 @@ document.addEventListener("DOMContentLoaded", () => {
  * Additional Helpers
  ***************************************************************/
 
+// Initialize microinteractions and animations
+function initializeAnimations() {
+  // Add ripple effect to buttons
+  document.querySelectorAll('.submit-btn, .action-btn').forEach(button => {
+    button.addEventListener('click', createRippleEffect);
+  });
+  
+  // Add hover animation to cards
+  document.querySelectorAll('.item-card, .factor-card').forEach(card => {
+    card.addEventListener('mouseenter', () => {
+      card.style.transform = 'translateY(-5px)';
+    });
+    card.addEventListener('mouseleave', () => {
+      card.style.transform = 'translateY(0)';
+    });
+  });
+  
+  // Add input focus effects
+  document.querySelectorAll('input, select, textarea').forEach(input => {
+    input.addEventListener('focus', () => {
+      input.closest('.form-group')?.classList.add('input-focus');
+    });
+    input.addEventListener('blur', () => {
+      input.closest('.form-group')?.classList.remove('input-focus');
+    });
+  });
+}
+
+// Create ripple effect on button click
+function createRippleEffect(event) {
+  const button = event.currentTarget;
+  const circle = document.createElement('span');
+  const diameter = Math.max(button.clientWidth, button.clientHeight);
+  
+  circle.style.width = circle.style.height = `${diameter}px`;
+  circle.style.left = `${event.clientX - button.getBoundingClientRect().left - diameter / 2}px`;
+  circle.style.top = `${event.clientY - button.getBoundingClientRect().top - diameter / 2}px`;
+  circle.classList.add('ripple');
+  
+  const ripple = button.getElementsByClassName('ripple')[0];
+  if (ripple) {
+    ripple.remove();
+  }
+  
+  button.appendChild(circle);
+}
+
+// Show submit animation
+function showSubmitAnimation() {
+  const successOverlay = document.createElement('div');
+  successOverlay.className = 'form-submit-success';
+  successOverlay.innerHTML = `
+    <div class="success-checkmark">
+      <i class="fas fa-check"></i>
+    </div>
+  `;
+  
+  document.body.appendChild(successOverlay);
+  
+  // Remove after animation
+  setTimeout(() => {
+    successOverlay.remove();
+  }, 2000);
+}
+
 // Convert file => Base64
 async function toBase64(file) {
   return new Promise((resolve, reject) => {
@@ -155,132 +230,4 @@ async function toBase64(file) {
     reader.onerror = err => reject(err);
     reader.readAsDataURL(file);
   });
-}
-
-function initializeTooltips() {
-  // Initialize tooltips if needed
-}
-
-function initializeFormValidation(form) {
-  form.querySelectorAll("input, select, textarea").forEach(el => {
-    if (!el.hasAttribute("data-optional")) {
-      el.setAttribute("required", "");
-    }
-    el.addEventListener("invalid", function() {
-      this.classList.add("invalid");
-    });
-    el.addEventListener("input", function() {
-      this.classList.remove("invalid");
-      if (this.validity.valid) {
-        this.classList.add("valid");
-      } else {
-        this.classList.remove("valid");
-      }
-    });
-  });
-}
-
-function showValidationMessages(form) {
-  const firstInvalid = form.querySelector(":invalid");
-  if (firstInvalid) {
-    firstInvalid.focus();
-    firstInvalid.classList.add("invalid-shake");
-    setTimeout(() => {
-      firstInvalid.classList.remove("invalid-shake");
-    }, 600);
-  }
-}
-
-function loadFromUrlParams() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const item = urlParams.get("item");
-  const score = urlParams.get("score");
-  if (item && score) {
-    const banner = document.createElement("div");
-    banner.className = "shared-result-banner";
-    banner.innerHTML = `
-      <div class="shared-result-content">
-        <h3>Shared Result</h3>
-        <p>You're viewing a shared decision for <strong>${item}</strong> with a score of <strong>${score}</strong>.</p>
-        <button class="create-own-btn" onclick="clearSharedResult()">Create Your Own</button>
-      </div>
-    `;
-    document.body.insertBefore(banner, document.body.firstChild);
-    const basicItemField = document.getElementById("basic-item-name");
-    if (basicItemField) basicItemField.value = item;
-  }
-}
-
-window.clearSharedResult = function () {
-  const banner = document.querySelector(".shared-result-banner");
-  if (banner) banner.remove();
-  window.history.replaceState({}, document.title, window.location.pathname);
-};
-
-function renderLoadingState() {
-  return `
-    <div class="loading-container">
-      <div class="loading-spinner"></div>
-      <h3>Analyzing with Munger AI + Gemini...</h3>
-      <p>Please wait while we identify your item and calculate your decision score.</p>
-    </div>
-  `;
-}
-
-// Renders a small card showing the item + cost
-function renderItemCard(name, cost) {
-  let icon = "🛍️";
-  if (cost >= 5000) icon = "💰";
-  else if (cost >= 1000) icon = "💼";
-
-  const lower = (name || "").toLowerCase();
-  if (lower.includes("house") || lower.includes("home")) icon = "🏠";
-  else if (lower.includes("car") || lower.includes("vehicle")) icon = "🚗";
-  else if (lower.includes("laptop") || lower.includes("computer")) icon = "💻";
-
-  return `
-    <div class="item-card">
-      <div class="item-icon">${icon}</div>
-      <div class="item-details">
-        <div class="item-name">${name}</div>
-      </div>
-      <div class="item-cost">
-        $${cost.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-      </div>
-    </div>
-  `;
-}
-
-function renderDecisionBox(pds, recText, recClass) {
-  let desc = "";
-  if (pds >= 7) desc = "This looks like a great purchase!";
-  else if (pds >= 5) desc = "This purchase aligns with your financial goals.";
-  else if (pds >= 0) desc = "This purchase requires more consideration.";
-  else if (pds >= -5) desc = "This purchase may not be advisable right now.";
-  else desc = "This purchase is strongly discouraged.";
-
-  return `
-    <div class="decision-box">
-      <h2>Purchase Decision Score</h2>
-      <div class="score">${pds}</div>
-      <div class="recommendation ${recClass}">${recText}</div>
-      <p class="score-description">${desc}</p>
-    </div>
-  `;
-}
-
-function renderFactorCard(factor, value, desc) {
-  let valClass = "neutral";
-  if (value > 0) valClass = "positive";
-  if (value < 0) valClass = "negative";
-
-  return `
-    <div class="factor-card">
-      <div class="factor-letter">${factor}</div>
-      <div class="factor-description">${desc}</div>
-      <div class="factor-value ${valClass}">
-        ${value > 0 ? "+" + value : value}
-      </div>
-    </div>
-  `;
 }
