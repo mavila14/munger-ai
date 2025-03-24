@@ -3,12 +3,12 @@
  *
  * Simplified: 
  * 1) We call /api/analyze-image if an image is provided (Gemini).
- * 2) We produce a final decision: "Strong Buy" or "Don't Buy."
+ * 2) We produce a final decision: "Buy" or "Don't Buy."
  *    - Highly simplified example logic below.
  ***************************************************************/
 
 const Config = {
-  BUY_RATIO_THRESHOLD: 0.3 // If cost-to-income ratio < 0.3 => "Strong Buy"
+  BUY_RATIO_THRESHOLD: 0.3 // If cost-to-income ratio < 0.3 => "Buy"
 };
 
 /**
@@ -52,7 +52,7 @@ async function callGeminiAPI(inputs) {
 /**
  * Very simple logic:
  * - If user has high-interest debt => "Don't Buy"
- * - Else if (cost / leftoverIncome < 0.3) => "Strong Buy"
+ * - Else if (cost / leftoverIncome < 0.3) => "Buy"
  * - Otherwise => "Don't Buy"
  */
 function decide(inputs) {
@@ -68,7 +68,7 @@ function decide(inputs) {
   const ratio = itemCost / leftoverIncome;
   if (ratio < Config.BUY_RATIO_THRESHOLD) {
     return {
-      finalDecision: "Strong Buy",
+      finalDecision: "Buy",
       ...inputs
     };
   }
