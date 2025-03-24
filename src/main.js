@@ -57,7 +57,7 @@ document.addEventListener("DOMContentLoaded", () => {
           hasHighInterestDebt
         });
 
-        // Show final decision
+        // Show final decision with explanation
         basicResultDiv.innerHTML = `
           <div class="analysis-result">
             <h3>Item: ${finalData.itemName || "Unnamed"}</h3>
@@ -66,6 +66,7 @@ document.addEventListener("DOMContentLoaded", () => {
               <h2 class="recommendation ${
                 finalData.finalDecision === "Buy" ? "positive" : "negative"
               }">${finalData.finalDecision}</h2>
+              <p class="ai-explanation">${finalData.explanation || ""}</p>
             </div>
           </div>
         `;
