@@ -522,7 +522,7 @@ input:focus, select:focus, textarea:focus {
   margin-bottom: 1.25rem;
 }
 
-/* Profile completion UI, same as before */
+/* Profile completion UI */
 .profile-prompt {
   margin-top: 1rem;
   padding: 1rem;
@@ -757,31 +757,6 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* Add these CSS rules to your styles.css file */
-
-.ai-explanation {
-  font-size: 0.95rem;
-  color: var(--neutral-700);
-  margin-top: 1rem;
-  line-height: 1.5;
-  padding: 0.75rem;
-  background-color: var(--neutral-100);
-  border-radius: 8px;
-  border-left: 3px solid var(--primary);
-  font-style: italic;
-}
-
-.decision-box {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 1.5rem;
-}
-
-.decision-box .recommendation {
-  margin-bottom: 0.5rem;
-}
-
-/* CSS for Advanced Decision Algorithm UI */
 
 .ai-explanation {
   font-size: 0.95rem;
