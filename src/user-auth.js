@@ -193,10 +193,27 @@ document.addEventListener('DOMContentLoaded', () => {
           body: JSON.stringify({ username, password })
         });
 
-        const data = await response.json();
-
+        // Check if the response is OK before parsing JSON
         if (!response.ok) {
-          throw new Error(data.error || 'Login failed');
+          const errorText = await response.text();
+          console.error('Login error response:', errorText);
+          throw new Error(`Login failed: ${response.status} ${response.statusText}`);
+        }
+
+        // Check if the response has content before parsing as JSON
+        const responseText = await response.text();
+        let data;
+        
+        if (responseText) {
+          try {
+            data = JSON.parse(responseText);
+          } catch (parseError) {
+            console.error('Failed to parse JSON response:', responseText);
+            throw new Error('Login failed: Invalid response format');
+          }
+        } else {
+          // Empty response is unexpected for login since we need a token
+          throw new Error('Login failed: No response from server');
         }
 
         // Store the JWT and username in localStorage
@@ -255,10 +272,27 @@ document.addEventListener('DOMContentLoaded', () => {
           body: JSON.stringify({ username, password })
         });
 
-        const data = await response.json();
-
+        // Check if the response is OK before parsing JSON
         if (!response.ok) {
-          throw new Error(data.error || 'Registration failed');
+          const errorText = await response.text();
+          console.error('Registration error response:', errorText);
+          throw new Error(`Registration failed: ${response.status} ${response.statusText}`);
+        }
+
+        // Check if the response has content before parsing as JSON
+        const responseText = await response.text();
+        let data;
+        
+        if (responseText) {
+          try {
+            data = JSON.parse(responseText);
+          } catch (parseError) {
+            console.error('Failed to parse JSON response:', responseText);
+            throw new Error('Registration succeeded but returned invalid response format');
+          }
+        } else {
+          // Handle empty response - assume success if response was OK
+          data = { message: 'User created successfully' };
         }
 
         // Show success message
