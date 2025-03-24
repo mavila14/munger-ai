@@ -780,3 +780,95 @@ input:focus, select:focus, textarea:focus {
 .decision-box .recommendation {
   margin-bottom: 0.5rem;
 }
+
+/* CSS for Advanced Decision Algorithm UI */
+
+.ai-explanation {
+  font-size: 0.95rem;
+  color: var(--neutral-700);
+  margin-top: 1rem;
+  line-height: 1.5;
+  padding: 0.75rem;
+  background-color: var(--neutral-100);
+  border-radius: 8px;
+  border-left: 3px solid var(--primary);
+  font-style: italic;
+}
+
+.decision-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem;
+}
+
+.decision-box .recommendation {
+  margin-bottom: 0.5rem;
+}
+
+/* New styles for decision factors */
+.decision-factors {
+  margin-top: 2rem;
+  padding: 1rem;
+  border-top: 1px solid var(--neutral-300);
+}
+
+.decision-factors h4 {
+  font-size: 1rem;
+  color: var(--neutral-700);
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.confidence-bar {
+  height: 12px;
+  background-color: var(--neutral-200);
+  border-radius: 6px;
+  margin: 0.5rem 0;
+  overflow: hidden;
+}
+
+.confidence-progress {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.8s ease;
+}
+
+/* Factor indicators */
+.factor-indicators {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.75rem;
+}
+
+.factor-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  flex: 1;
+  padding: 0 0.25rem;
+}
+
+.factor-indicator .factor-label {
+  font-size: 0.7rem;
+  color: var(--neutral-600);
+  margin-bottom: 0.25rem;
+}
+
+.factor-indicator .factor-value {
+  width: 100%;
+  height: 4px;
+  background-color: var(--neutral-200);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.factor-indicator .factor-fill {
+  position: absolute;
+  height: 100%;
+  left: 0;
+  top: 0;
+  border-radius: 2px;
+}
