@@ -43,12 +43,15 @@ module.exports = async function (context, req) {
 
     const instructions = `
       Look at the following image and identify a single consumer item in it.
+      Be specific about what the item is (e.g., "Sony WH-1000XM4 Headphones" not just "Headphones").
       Estimate an approximate cost in USD.
       Return only valid JSON in the format:
       {
-        "name": "<item name>",
+        "name": "<specific item name>",
         "cost": <number>
       }
+      
+      If you cannot confidently identify the item, use "Unknown" as the name.
     `.trim();
 
     const inlinePart = {
