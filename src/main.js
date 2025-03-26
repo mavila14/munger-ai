@@ -114,31 +114,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // 8) Render results (AI name, cost, facts, final decision)
         basicResultDiv.innerHTML = `
-          <div class="analysis-result">
-            <div class="item-details">
-              <h3>${finalData.itemName || "Unknown Item"}</h3>
-              <p class="item-cost">
-                Estimated Cost: ${(parseFloat(finalData.itemCost) || 0).toFixed(2)}
-              </p>
-              ${
-                finalData.itemFacts
-                  ? `<p class="item-facts">${finalData.itemFacts}</p>`
-                  : ""
-              }
-            </div>
+  <div class="analysis-result">
+    <div class="decision-box">
+      <h2 class="recommendation ${
+        finalData.finalDecision === "Buy" ? "positive" : "negative"
+      }">
+        ${finalData.finalDecision}
+      </h2>
+      <p class="ai-explanation">${finalData.explanation || ""}</p>
+    </div>
 
-            <div class="decision-box">
-              <h2 class="recommendation ${
-                finalData.finalDecision === "Buy" ? "positive" : "negative"
-              }">
-                ${finalData.finalDecision}
-              </h2>
-              <p class="ai-explanation">${finalData.explanation || ""}</p>
-            </div>
-
-            ${renderDecisionFactors(finalData)}
-          </div>
-        `;
+    ${renderDecisionFactors(finalData)}
+  </div>
+`;
       } catch (err) {
         console.error("Error in final decision:", err);
         basicResultDiv.innerHTML = `
