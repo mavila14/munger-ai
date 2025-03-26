@@ -1,9 +1,12 @@
 /**
- * index.js for .api/AnalyzeImage
+ * index.js for /.api/analyze-image
  *
  * Receives { imageBase64 } in req.body, calls Gemini to identify item & approximate cost,
  * and returns JSON like: { name: "...", cost: 123, facts: "..." }
  */
+
+"use strict";
+
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 module.exports = async function (context, req) {
@@ -47,7 +50,7 @@ module.exports = async function (context, req) {
       
       Your task is to:
       1. Identify the exact item with brand and model if visible
-      2. Estimate a realistic cost in USD 
+      2. Estimate a realistic cost in USD
       3. Provide 1-2 sentences of interesting facts about this specific item
       
       Return only valid JSON in the format:
@@ -68,6 +71,7 @@ module.exports = async function (context, req) {
       }
     };
 
+    // Generate content by passing instructions plus the image
     const result = await model.generateContent([instructions, inlinePart]);
     const text = await result.response.text();
     context.log("Gemini raw response:", text);
@@ -82,10 +86,12 @@ module.exports = async function (context, req) {
       }
     }
 
+    // Validate final fields
     if (!recognized.name) recognized.name = "Unknown";
     if (!recognized.cost || isNaN(recognized.cost)) recognized.cost = 0;
     if (!recognized.facts) recognized.facts = "";
 
+    // Return just the recognized fields
     context.res = {
       body: {
         name: recognized.name,
