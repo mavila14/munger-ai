@@ -64,9 +64,15 @@ module.exports = async function (context, req) {
       Only use "Unknown" as the name if the image is completely unrecognizable.
     `.trim();
 
+    // Handle the case where base64 might include the data URL prefix
+    let cleanedBase64 = base64;
+    if (cleanedBase64.indexOf(',') !== -1) {
+      cleanedBase64 = cleanedBase64.split(',')[1];
+    }
+
     const inlinePart = {
       inlineData: {
-        data: base64,
+        data: cleanedBase64,
         mimeType: "image/jpeg"
       }
     };
