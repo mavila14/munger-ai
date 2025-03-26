@@ -1002,3 +1002,12 @@ input[type="file"] {
     font-size: 1.2rem;
   }
 }
+
+/* Add this to src/styles.css */
+.decision-factors .item-details {
+  margin-top: 1.5rem;
+  background-color: var(--primary-light);
+  padding: 1rem;
+  border-radius: 8px;
+  border-left: 4px solid var(--primary);
+}
