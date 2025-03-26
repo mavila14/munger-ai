@@ -77,14 +77,16 @@ async function callGeminiAPI(inputs) {
         
         // Store item facts if available
         if (data.facts) {
+          // Make sure we assign the facts
           itemFacts = data.facts;
+          inputs.itemFacts = data.facts;
         }
       }
     }
     
-    // Add item facts to inputs for use in the decision algorithm
-    inputs.itemFacts = itemFacts;
-
+    // Ensure itemFacts is set in inputs
+    inputs.itemFacts = inputs.itemFacts || itemFacts;
+    
     // Generate an explanation and final decision
     return advancedDecisionAlgorithm(inputs, recognizedImage);
   } catch (error) {
@@ -278,16 +280,17 @@ function generateExplanation(factors) {
   // Format percentage for disposable income
   const percentOfIncome = Math.round(disposableIncomeRatio * 100);
   
-  // Start explanation with AI recognition if applicable
-  let explanation = "";
+  // ALWAYS start with item details regardless of other conditions
+  let explanation = `We've identified your item as "${itemName}" with an estimated cost of $${(parseFloat(itemCost) || 0).toFixed(2)}. `;
   
+  // ALWAYS add item facts if available
+  if (itemFacts) {
+    explanation += `Here are some interesting facts: ${itemFacts} `;
+  }
+  
+  // Add AI recognition context if applicable
   if (recognizedImage) {
-    explanation = `AI has analyzed your image and identified it as a ${itemName}. `;
-    
-    // Add item facts if available
-    if (itemFacts) {
-      explanation += `${itemFacts} `;
-    }
+    explanation += `This was automatically identified from your uploaded image. `;
   }
   
   // Primary factor determination (lowest factor has biggest impact on decision)
@@ -310,14 +313,9 @@ function generateExplanation(factors) {
   } else if (lowestFactor === incomeFactor && incomeFactor < 0.5) {
     // Affordability is the main concern
     explanation += `This ${itemName} costs ${percentOfIncome}% of your monthly disposable income, which is more than recommended.`;
-  } 
-  // If we've already provided a "concern" explanation above, we don't do the "Buy" block
-  else if (finalDecision === "Buy") {
-    // *** UPDATED: Always show name, cost, and facts here ***
-    explanation += `We've identified your item as "${itemName}" with an estimated cost of ${(parseFloat(itemCost) || 0).toFixed(2)}. `;
-    if (itemFacts) {
-      explanation += `Here are some interesting facts: ${itemFacts} `;
-    }
+  } else if (finalDecision === "Buy") {
+    // If we get here with a "Buy" decision, add some positive reinforcement
+    explanation += `Based on your financial situation, this purchase seems reasonable.`;
   } else {
     // General negative explanation if no specific factor dominates
     explanation += `Based on your overall financial situation, this ${itemName} purchase may not be the best use of funds right now.`;
