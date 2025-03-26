@@ -1,3 +1,5 @@
+<!-- main.js -->
+<script>
 /***************************************************************
  * main.js
  *
@@ -169,7 +171,6 @@ function renderLoadingState() {
 /**
  * Render numeric decision factors (score bar, etc.)
  */
-// Replace the renderDecisionFactors function in src/main.js with this updated version
 function renderDecisionFactors(data) {
   if (!data.finalScore) return "";
   
@@ -202,3 +203,4 @@ function renderDecisionFactors(data) {
     </div>
   `;
 }
+</script>
