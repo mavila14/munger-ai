@@ -243,11 +243,21 @@ nav {
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  background-clip: text; /* Add standard background-clip property for broader compatibility */
   letter-spacing: -0.05em;
-  line-height: 1;
+  line-height: 1.2; /* Increase line height from 1 to 1.2 to allow more space */
   margin-bottom: var(--space-2);
   transition: all var(--transition);
   text-align: center;
+  padding-bottom: 0.1em; /* Add padding at the bottom to prevent clipping */
+}
+/* Ensure mobile view also has enough space */
+@media (max-width: 768px) {
+  .landing-title {
+    font-size: 2.5rem;
+    line-height: 1.3; /* Slightly more line height on mobile */
+    padding-bottom: 0.15em;
+  }
 }
 
 .landing-title:hover {
