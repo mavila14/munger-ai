@@ -1,5 +1,3 @@
-<!-- main.js -->
-<script>
 /***************************************************************
  * main.js
  *
@@ -102,6 +100,14 @@ document.addEventListener("DOMContentLoaded", () => {
         financialGoal: ""
       };
 
+      // Check if we have profile data from the user profile module
+      if (window.UserProfile && typeof window.UserProfile.getUserFinancialProfile === 'function') {
+        const userProfile = window.UserProfile.getUserFinancialProfile();
+        if (userProfile) {
+          profileData = { ...profileData, ...userProfile };
+        }
+      }
+
       // Show a loading spinner in the result area
       basicResultDiv.innerHTML = renderLoadingState();
 
@@ -203,4 +209,3 @@ function renderDecisionFactors(data) {
     </div>
   `;
 }
-</script>
