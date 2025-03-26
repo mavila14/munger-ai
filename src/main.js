@@ -181,8 +181,24 @@ function renderLoadingState() {
 /**
  * Render numeric decision factors (score bar, etc.)
  */
+// Replace the renderDecisionFactors function in src/main.js with this updated version
 function renderDecisionFactors(data) {
   if (!data.finalScore) return "";
+  
+  const itemDetails = `
+    <div class="item-details">
+      <h3>${data.itemName || "Unknown Item"}</h3>
+      <p class="item-cost">
+        Estimated Cost: $${(parseFloat(data.itemCost) || 0).toFixed(2)}
+      </p>
+      ${
+        data.itemFacts
+          ? `<p class="item-facts">${data.itemFacts}</p>`
+          : ""
+      }
+    </div>
+  `;
+  
   return `
     <div class="decision-factors">
       <h4>Financial Confidence Score: ${(data.finalScore * 100).toFixed(0)}%</h4>
@@ -194,6 +210,7 @@ function renderDecisionFactors(data) {
              };">
         </div>
       </div>
+      ${itemDetails}
     </div>
   `;
 }
