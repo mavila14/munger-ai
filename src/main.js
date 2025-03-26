@@ -1,17 +1,21 @@
 /***************************************************************
  * main.js
  *
- * Main logic for basic tool:
- *  1) Optionally call Gemini to parse item image.
- *  2) Show final decision: "Buy" or "Don't Buy" with advanced reasoning.
- *  3) Handle camera input on mobile devices.
+ * Main logic for the basic "Should I Buy It?" tool:
+ * 1) Optionally call Gemini to parse item image => name/cost/facts.
+ * 2) Show the final decision with explanation.
+ * 3) Handle camera input on mobile devices.
  ***************************************************************/
 
 document.addEventListener("DOMContentLoaded", () => {
+  // 1) Access our Gemini-calling helper
   const { callGeminiAPI } = window.AppHelpers || {};
 
+  // 2) Grab relevant DOM elements
   const basicForm = document.getElementById("basic-form");
   const basicResultDiv = document.getElementById("basic-result");
+
+  // File, camera, and preview
   const fileInput = document.getElementById("basic-item-image");
   const cameraButton = document.getElementById("camera-button");
   const uploadButton = document.getElementById("upload-button");
@@ -19,36 +23,44 @@ document.addEventListener("DOMContentLoaded", () => {
   const previewImg = document.getElementById("preview-img");
   const removeImageBtn = document.getElementById("remove-image");
 
-  // Check if the device has camera capabilities
-  const hasGetUserMedia = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
-  
-  // Setup camera and file upload buttons
-  if (hasGetUserMedia) {
+  // 3) Check if device can use camera capture
+  const hasGetUserMedia = !!(
+    navigator.mediaDevices && navigator.mediaDevices.getUserMedia
+  );
+
+  // Set up camera button if available
+  if (cameraButton && hasGetUserMedia) {
     cameraButton.addEventListener("click", () => {
+      // Force the file input to use "environment" camera on mobile
       fileInput.setAttribute("capture", "environment");
       fileInput.click();
     });
-  } else {
+  } else if (cameraButton) {
+    // Hide the "Take Photo" button if camera is not available
     cameraButton.style.display = "none";
   }
 
-  uploadButton.addEventListener("click", () => {
-    fileInput.removeAttribute("capture");
-    fileInput.click();
-  });
+  // Set up upload button
+  if (uploadButton) {
+    uploadButton.addEventListener("click", () => {
+      // Remove any "capture" so we get a normal file picker
+      fileInput.removeAttribute("capture");
+      fileInput.click();
+    });
+  }
 
-  // Handle file selection for preview
+  // 4) Show image preview when user picks (or takes) a photo
   if (fileInput) {
-    fileInput.addEventListener("change", async function() {
-      if (this.files && this.files[0]) {
-        const file = this.files[0];
+    fileInput.addEventListener("change", () => {
+      if (fileInput.files && fileInput.files[0]) {
+        const file = fileInput.files[0];
         previewImg.src = URL.createObjectURL(file);
         imagePreview.classList.remove("hidden");
       }
     });
   }
 
-  // Handle image removal
+  // 5) Allow user to remove selected image
   if (removeImageBtn) {
     removeImageBtn.addEventListener("click", () => {
       fileInput.value = "";
@@ -57,25 +69,25 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // 6) Handle the form submission
   if (basicForm) {
     basicForm.addEventListener("submit", async (e) => {
       e.preventDefault();
 
-      // Get values with proper validation
+      // Retrieve item name & cost from form fields
       const itemNameInput = document.getElementById("basic-item-name");
       const itemCostInput = document.getElementById("basic-item-cost");
-      
-      // Trim input values and provide proper defaults
-      const itemName = itemNameInput.value.trim() || "Unknown Item";
-      const itemCost = parseFloat(itemCostInput.value) || 0;
 
-      // Check for an image
+      const itemName = itemNameInput?.value.trim() || "Unknown Item";
+      const itemCost = parseFloat(itemCostInput?.value) || 0;
+
+      // Convert the chosen image to base64 if present
       let imageBase64 = "";
       if (fileInput && fileInput.files && fileInput.files[0]) {
         imageBase64 = await toBase64(fileInput.files[0]);
       }
 
-      // Get user financial profile data if available
+      // For demo, default some user financials if not pulling from profile
       let profileData = {
         leftoverIncome: 2000,
         hasHighInterestDebt: "No",
@@ -87,37 +99,12 @@ document.addEventListener("DOMContentLoaded", () => {
         monthlySavings: 500,
         financialGoal: ""
       };
-      
-      try {
-        if (window.UserProfile && typeof window.UserProfile.getUserFinancialProfile === 'function') {
-          const userProfile = window.UserProfile.getUserFinancialProfile();
-          if (userProfile) {
-            // Override defaults with actual user data
-            profileData = {
-              ...profileData,
-              ...userProfile
-            };
-            
-            // Make sure we have disposable income
-            if (userProfile.monthlyIncome && userProfile.monthlyExpenses) {
-              profileData.leftoverIncome = parseFloat(userProfile.monthlyIncome) - parseFloat(userProfile.monthlyExpenses);
-            }
-            
-            // Set high interest debt flag
-            if (userProfile.highInterestDebt && parseFloat(userProfile.highInterestDebt) > 0) {
-              profileData.hasHighInterestDebt = "Yes";
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Error retrieving user profile:", error);
-      }
 
-      // Show loading
+      // Show a loading spinner in the result area
       basicResultDiv.innerHTML = renderLoadingState();
 
       try {
-        // Decide using the advanced algorithm
+        // 7) Call our advanced logic which also calls Gemini if there's an image
         const finalData = await callGeminiAPI({
           itemName,
           itemCost,
@@ -125,72 +112,88 @@ document.addEventListener("DOMContentLoaded", () => {
           ...profileData
         });
 
-        // Show final decision with explanation
-        basicResultDiv.innerHTML = 
+        // 8) Render results (AI name, cost, facts, final decision)
+        basicResultDiv.innerHTML = `
           <div class="analysis-result">
             <div class="item-details">
               <h3>${finalData.itemName || "Unknown Item"}</h3>
-              <p class="item-cost">Estimated Cost: ${(parseFloat(finalData.itemCost) || 0).toFixed(2)}</p>
-              ${finalData.itemFacts ? <p class="item-facts">${finalData.itemFacts}</p> : ''}
+              <p class="item-cost">
+                Estimated Cost: ${(parseFloat(finalData.itemCost) || 0).toFixed(2)}
+              </p>
+              ${
+                finalData.itemFacts
+                  ? `<p class="item-facts">${finalData.itemFacts}</p>`
+                  : ""
+              }
             </div>
+
             <div class="decision-box">
               <h2 class="recommendation ${
                 finalData.finalDecision === "Buy" ? "positive" : "negative"
-              }">${finalData.finalDecision}</h2>
+              }">
+                ${finalData.finalDecision}
+              </h2>
               <p class="ai-explanation">${finalData.explanation || ""}</p>
             </div>
+
             ${renderDecisionFactors(finalData)}
           </div>
-        ;
+        `;
       } catch (err) {
         console.error("Error in final decision:", err);
-        basicResultDiv.innerHTML = 
+        basicResultDiv.innerHTML = `
           <div class="error-message">
             <h3>Analysis Error</h3>
             <p>We couldn't complete your analysis. Please try again later.</p>
             <button class="retry-btn" onclick="location.reload()">Retry</button>
           </div>
-        ;
+        `;
       }
     });
   }
 });
 
 /**
- * Renders decision factors if available
+ * Convert a File object to base64 string
  */
-function renderDecisionFactors(data) {
-  if (!data.finalScore) return '';
-  
-  return 
-    <div class="decision-factors">
-      <h4>Financial Confidence Score: ${(data.finalScore * 100).toFixed(0)}%</h4>
-      <div class="confidence-bar">
-        <div class="confidence-progress" style="width: ${data.finalScore * 100}%; 
-          background-color: ${data.finalScore >= 0.65 ? '#48bb78' : '#f56565'};">
-        </div>
-      </div>
-    </div>
-  ;
-}
-
-/** Convert file => Base64 */
 async function toBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
-    reader.onerror = err => reject(err);
+    reader.onerror = (err) => reject(err);
     reader.readAsDataURL(file);
   });
 }
 
-/** Loading state HTML */
+/**
+ * Show a simple loading state
+ */
 function renderLoadingState() {
-  return 
+  return `
     <div class="loading-container">
       <div class="loading-spinner"></div>
       <h3>Analyzing...</h3>
       <p>One moment while we generate your recommendation.</p>
     </div>
-  ;
+  `;
+}
+
+/**
+ * Render numeric decision factors (score bar, etc.)
+ */
+function renderDecisionFactors(data) {
+  if (!data.finalScore) return "";
+  return `
+    <div class="decision-factors">
+      <h4>Financial Confidence Score: ${(data.finalScore * 100).toFixed(0)}%</h4>
+      <div class="confidence-bar">
+        <div class="confidence-progress"
+             style="width: ${data.finalScore * 100}%;
+             background-color: ${
+               data.finalScore >= 0.65 ? "#48bb78" : "#f56565"
+             };">
+        </div>
+      </div>
+    </div>
+  `;
 }
