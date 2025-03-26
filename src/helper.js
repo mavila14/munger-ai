@@ -36,10 +36,17 @@ async function callGeminiAPI(inputs) {
     
     if (inputs.imageBase64) {
       console.log("Calling Gemini AI with image...");
+      
+      // Strip the data URL prefix if it exists
+      let base64Data = inputs.imageBase64;
+      if (base64Data.startsWith('data:')) {
+        base64Data = base64Data.split(',')[1];
+      }
+      
       const response = await fetch("/api/analyze-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64: inputs.imageBase64 })
+        body: JSON.stringify({ imageBase64: base64Data })
       });
 
       if (!response.ok) {
@@ -307,7 +314,7 @@ function generateExplanation(factors) {
   // If we've already provided a "concern" explanation above, we don't do the "Buy" block
   else if (finalDecision === "Buy") {
     // *** UPDATED: Always show name, cost, and facts here ***
-    explanation += `We've identified your item as "${itemName}" with an estimated cost of $${(parseFloat(itemCost) || 0).toFixed(2)}. `;
+    explanation += `We've identified your item as "${itemName}" with an estimated cost of ${(parseFloat(itemCost) || 0).toFixed(2)}. `;
     if (itemFacts) {
       explanation += `Here are some interesting facts: ${itemFacts} `;
     }
