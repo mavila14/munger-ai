@@ -1,8 +1,0 @@
-{
-  "IsEncrypted": false,
-  "Values": {
-    "FUNCTIONS_WORKER_RUNTIME": "node",
-    "AzureWebJobsStorage": "",
-    "GEMINI_API_KEY": "AIzaSyB-RIjhhODp6aPTzqVcwbXD894oebXFCUY"
-  }
-}
