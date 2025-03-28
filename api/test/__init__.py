@@ -1,3 +1,6 @@
+# Create a proper __init__.py file in the api/test directory
+# This content is currently incorrectly in a file called function.json
+
 import json
 import azure.functions as func
 
