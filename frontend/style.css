@@ -556,7 +556,6 @@ body {
   margin: 30px 0;
   text-align: center;
   animation: fadeIn 0.5s ease-out;
-  order: 1; /* Ensure this appears first */
 }
 
 .recommendation {
@@ -585,50 +584,19 @@ body {
   box-shadow: 0 12px 20px rgba(0, 0, 0, 0.15);
 }
 
-/* Charlie Munger quote styling */
-.munger-quote {
-  font-style: italic;
-  padding: 16px 20px;
-  background-color: #f8fafc;
-  border-left: 4px solid var(--primary-color);
-  margin: 24px 0;
-  border-radius: 0 12px 12px 0;
-  position: relative;
-  animation: fadeIn 0.5s ease-out;
-  order: 3; /* Ensure this appears last */
-}
-
-.munger-quote::before {
-  content: """;
-  font-size: 4rem;
-  font-family: Georgia, serif;
-  color: rgba(99, 102, 241, 0.1);
-  position: absolute;
-  top: -20px;
-  left: 10px;
-}
-
-/* OPTIONAL FIELD INDICATOR */
-.optional-text {
-  font-weight: normal;
-  font-size: 0.85em;
-  color: var(--text-lighter);
-  font-style: italic;
-}
-
-/* ALTERNATIVE PRODUCT SUGGESTIONS */
+/* ALTERNATIVE PRODUCT SUGGESTIONS - FIXED */
 .alternative-suggestion {
   background-color: #F0FFF4;
   border: 1px solid #C6F6D5;
   border-radius: 10px;
   padding: 16px;
-  margin: 0 0 24px 0;
+  margin: 24px 0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   position: relative;
   overflow: hidden;
-  display: block; /* Ensure it's displayed as a block */
-  visibility: visible; /* Make sure it's visible */
-  order: 2; /* Ensure this appears second */
+  display: block !important; /* Force display */
+  visibility: visible !important; /* Force visibility */
+  opacity: 1 !important; /* Ensure it's not transparent */
 }
 
 .alternative-suggestion h3 {
@@ -652,24 +620,25 @@ body {
 }
 
 .alternative-link {
-  display: inline-flex;
+  display: inline-flex !important;
   align-items: center;
   justify-content: center;
   background-color: #38A169;
-  color: white !important; /* Ensure text is white on all browsers */
+  color: white !important;
   padding: 10px 18px;
   border-radius: 8px;
-  text-decoration: none !important; /* Remove underlines on all browsers */
+  text-decoration: none !important;
   margin: 8px 0;
   font-weight: 500;
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
-  cursor: pointer; /* Show hand cursor on hover for better UX */
-  border: none; /* Remove any default borders */
-  -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
-  user-select: none; /* Prevent text selection */
-  min-width: 150px; /* Ensure minimum clickable area */
+  cursor: pointer;
+  border: none;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  min-width: 150px;
+  z-index: 5; /* Ensure it's above other elements */
 }
 
 /* Add a subtle animation to the link button */
@@ -718,6 +687,36 @@ body {
   color: #38A169;
   font-weight: 600;
   margin-top: 8px;
+}
+
+/* Charlie Munger quote styling */
+.munger-quote {
+  font-style: italic;
+  padding: 16px 20px;
+  background-color: #f8fafc;
+  border-left: 4px solid var(--primary-color);
+  margin: 24px 0;
+  border-radius: 0 12px 12px 0;
+  position: relative;
+  animation: fadeIn 0.5s ease-out;
+}
+
+.munger-quote::before {
+  content: """;
+  font-size: 4rem;
+  font-family: Georgia, serif;
+  color: rgba(99, 102, 241, 0.1);
+  position: absolute;
+  top: -20px;
+  left: 10px;
+}
+
+/* OPTIONAL FIELD INDICATOR */
+.optional-text {
+  font-weight: normal;
+  font-size: 0.85em;
+  color: var(--text-lighter);
+  font-style: italic;
 }
 
 /* ANIMATION KEYFRAMES */
