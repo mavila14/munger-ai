@@ -1,6 +1,3 @@
-# Rename file from 'api/analyze/__innit__.py' to 'api/analyze/__init__.py'
-# The content remains the same, but the filename needs to be corrected
-
 import json
 import base64
 import requests
@@ -16,16 +13,12 @@ logger = logging.getLogger("munger_ai_api")
 # Define Gemini API key
 GEMINI_API_KEY = "AIzaSyB-RIjhhODp6aPTzqVcwbXD894oebXFCUY"
 
-# Define Search API key (using Bing Search API)
-SEARCH_API_KEY = "YOUR_BING_SEARCH_API_KEY"  # Replace with your actual key
-SEARCH_ENDPOINT = "https://api.bing.microsoft.com/v7.0/search"
-
 def main(req: func.HttpRequest) -> func.HttpResponse:
     """
     Azure Functions HTTP trigger function for analyzing purchase decisions.
     
     This function uses the Gemini API to make a direct buy/don't buy recommendation
-    and can search for cheaper alternatives.
+    and can search for cheaper alternatives using Google Search grounding.
     """
     try:
         body = req.get_json()
@@ -63,7 +56,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         # Find cheaper alternatives if requested
         alternative = None
         if find_alternatives and item_name:
-            alternative = find_cheaper_alternative(item_name, item_cost)
+            alternative = find_cheaper_alternative_with_search(item_name, item_cost)
         
         # Get buy/don't buy recommendation with advanced data if available
         recommendation = get_purchase_recommendation(item_name, item_cost, alternative, advanced_data)
@@ -156,79 +149,38 @@ def analyze_image_with_gemini(item_name: str, image_base64: str) -> dict:
             "facts": f"Error analyzing image: {e}"
         }
 
-def find_cheaper_alternative(item_name: str, item_cost: float) -> dict:
+def find_cheaper_alternative_with_search(item_name: str, item_cost: float) -> dict:
     """
-    Search for cheaper alternatives to the item.
+    Find cheaper alternatives using Google Search Grounding with Gemini 2.0
     
     Returns a dict with name, price, and URL of a cheaper alternative, or None if not found.
     """
-    try:
-        # For demo purposes, if the search API key is not set, use Gemini to simulate a search
-        if SEARCH_API_KEY == "YOUR_BING_SEARCH_API_KEY":
-            return _simulate_search_with_gemini(item_name, item_cost)
-        
-        # Construct search query for cheaper alternatives
-        search_query = f"cheaper alternative to {item_name} less than ${item_cost}"
-        
-        headers = {
-            'Ocp-Apim-Subscription-Key': SEARCH_API_KEY
-        }
-        
-        params = {
-            'q': search_query,
-            'count': 5,
-            'offset': 0,
-            'mkt': 'en-US'
-        }
-        
-        response = requests.get(SEARCH_ENDPOINT, headers=headers, params=params)
-        response.raise_for_status()
-        search_results = response.json()
-        
-        # Process search results
-        if 'webPages' in search_results and 'value' in search_results['webPages']:
-            for result in search_results['webPages']['value']:
-                # Extract price from snippet if possible (this is simplified)
-                price_match = re.search(r'\$(\d+\.?\d*)', result.get('snippet', ''))
-                if price_match:
-                    price = float(price_match.group(1))
-                    if price < item_cost:
-                        return {
-                            "name": result.get('name', 'Cheaper Alternative'),
-                            "price": price,
-                            "url": result.get('url')
-                        }
-        
-        logger.info("No cheaper alternative found using search API")
-        return None
-        
-    except Exception as e:
-        logger.error(f"Error searching for alternatives: {str(e)}")
-        return None
-
-def _simulate_search_with_gemini(item_name: str, item_cost: float) -> dict:
-    """
-    Use Gemini API to simulate finding a cheaper alternative when no search API key is available.
-    This is a fallback method for demonstration purposes.
-    """
     prompt = f"""
-    Find a cheaper alternative to {item_name} that costs less than ${item_cost}.
+    Find a cheaper alternative to "{item_name}" that costs less than ${item_cost}.
     
-    Return only valid JSON in this format:
+    I want you to use Google Search to find real alternatives available for purchase from reputable online retailers.
+    
+    For the selected alternative:
+    1. Provide the exact product name 
+    2. Provide the exact price (must be lower than ${item_cost})
+    3. Provide the direct product URL from the retailer (not a search results page)
+    4. Provide the retailer name
+    
+    Return the information ONLY as a JSON object with this exact structure:
     {{
       "name": "Alternative Product Name",
       "price": 123.45,
-      "url": "https://example.com/product"
+      "url": "https://retailer.com/product-page",
+      "retailer": "Retailer Name"
     }}
     
-    Make sure the URL is a valid and plausible shopping URL (like Amazon, Walmart, etc.)
-    and the price is less than ${item_cost}. If you can't confidently suggest a real
-    alternative, return null.
+    If you can't find a real alternative that's cheaper, return null.
     """
     
+    # Use Gemini 2.0 with Search as a tool
     gemini_url = (
         f"https://generativelanguage.googleapis.com/v1beta/models/"
-        f"gemini-1.5-pro:generateContent?key={GEMINI_API_KEY}"
+        f"gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
     )
     
     request_body = {
@@ -239,9 +191,14 @@ def _simulate_search_with_gemini(item_name: str, item_cost: float) -> dict:
                 ]
             }
         ],
+        "tools": [
+            {
+                "google_search": {}
+            }
+        ],
         "generationConfig": {
             "temperature": 0.2,
-            "maxOutputTokens": 512,
+            "maxOutputTokens": 1024,
             "topP": 0.8
         }
     }
@@ -249,11 +206,23 @@ def _simulate_search_with_gemini(item_name: str, item_cost: float) -> dict:
     headers = {"Content-Type": "application/json"}
     
     try:
+        logger.info(f"Searching for alternatives to {item_name} (under ${item_cost})")
         resp = requests.post(gemini_url, headers=headers, json=request_body)
         resp.raise_for_status()
         gemini_response = resp.json()
+        
+        # Extract the response text
         text = gemini_response["candidates"][0]["content"]["parts"][0]["text"]
+        
+        # Try to extract JSON from the response
         result = extract_json(text)
+        
+        # Log the search sources if available (for debugging)
+        if "groundingMetadata" in gemini_response["candidates"][0]:
+            grounding = gemini_response["candidates"][0]["groundingMetadata"]
+            if "groundingChunks" in grounding:
+                sources = [chunk.get("web", {}).get("uri", "") for chunk in grounding["groundingChunks"]]
+                logger.info(f"Search sources: {sources}")
         
         # Validate the result
         if (
@@ -263,11 +232,23 @@ def _simulate_search_with_gemini(item_name: str, item_cost: float) -> dict:
             "url" in result and
             float(result["price"]) < item_cost
         ):
+            # Add retailer if missing
+            if "retailer" not in result:
+                try:
+                    from urllib.parse import urlparse
+                    domain = urlparse(result["url"]).netloc
+                    result["retailer"] = domain.replace("www.", "").split(".")[0].title()
+                except:
+                    result["retailer"] = "Online Retailer"
+            
+            logger.info(f"Found alternative: {result['name']} for ${result['price']} at {result['retailer']}")
             return result
+        
+        logger.info("No suitable alternative found")
         return None
         
     except Exception as e:
-        logger.error(f"Error generating alternative with Gemini: {str(e)}")
+        logger.error(f"Error searching for alternatives with Gemini: {str(e)}")
         return None
 
 def get_purchase_recommendation(item_name: str, item_cost: float, alternative: dict = None, advanced_data: dict = None) -> dict:
@@ -308,6 +289,8 @@ def get_purchase_recommendation(item_name: str, item_cost: float, alternative: d
         alternative_context = f"\nCheaper alternative found:\n"
         alternative_context += f"- Name: {alternative['name']}\n"
         alternative_context += f"- Price: ${alternative['price']:.2f}\n"
+        if 'retailer' in alternative:
+            alternative_context += f"- Retailer: {alternative['retailer']}\n"
         alternative_context += f"- Savings: ${item_cost - alternative['price']:.2f} ({((item_cost - alternative['price'])/item_cost*100):.1f}%)\n"
     
     prompt = f"""
@@ -388,7 +371,8 @@ def extract_json(text: str) -> dict:
         json_str = text[start_idx:end_idx]
         try:
             return json.loads(json_str)
-        except:
+        except Exception as e:
+            logger.error(f"Error parsing JSON: {e}, JSON string: {json_str}")
             pass
             
     # If JSON extraction failed, create a default response
