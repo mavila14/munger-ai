@@ -85,6 +85,8 @@ document.addEventListener("DOMContentLoaded", () => {
   animateLabel(userNotes, 'label[for="userNotes"]');
   
   // Add button press effect
+
+  
   analyzeBtn.addEventListener("mousedown", () => {
     analyzeBtn.style.transform = "scale(0.98)";
   });
@@ -277,164 +279,171 @@ document.addEventListener("DOMContentLoaded", () => {
     return hasData ? advancedData : null;
   }
 
-  // Analyze button click with enhanced animations
-  analyzeBtn.addEventListener("click", async () => {
-    const itemName = itemNameInput.value.trim();
-    const itemCost = itemCostInput.value.trim();
+  // Analyze button click event handler
+analyzeBtn.addEventListener("click", async () => {
+  const itemName = itemNameInput.value.trim();
+  const itemCost = itemCostInput.value.trim();
 
-    // Modified validation to account for images
-    if ((!itemName && !hasImage) || !itemCost) {
-      // Shake animation for invalid input
-      analyzeBtn.classList.add("shake");
-      setTimeout(() => {
-        analyzeBtn.classList.remove("shake");
-        if (!itemCost) {
-          alert("Please provide the item cost.");
-        } else {
-          alert("Please either provide an item name or upload an image.");
-        }
-      }, 500);
-      return;
+  // Modified validation to account for images
+  if ((!itemName && !hasImage) || !itemCost) {
+    // Shake animation for invalid input
+    analyzeBtn.classList.add("shake");
+    setTimeout(() => {
+      analyzeBtn.classList.remove("shake");
+      if (!itemCost) {
+        alert("Please provide the item cost.");
+      } else {
+        alert("Please either provide an item name or upload an image.");
+      }
+    }, 500);
+    return;
+  }
+
+  // Show loading state with animation
+  resultContainer.classList.remove("hidden");
+  loadingIndicator.classList.remove("hidden");
+  resultContent.innerHTML = "";
+  
+  // Start the loading message rotation
+  startLoadingAnimation();
+
+  let base64Image = null;
+
+  // Use camera-captured image or uploaded file
+  try {
+    if (capturedImage) {
+      base64Image = capturedImage.split(",")[1];
+    } else if (imageUpload.files[0]) {
+      const file = imageUpload.files[0];
+      base64Image = await fileToBase64(file);
+    }
+  } catch (error) {
+    console.error("Error processing image:", error);
+  }
+  
+  // Get advanced analysis data if available
+  const advancedData = getAdvancedAnalysisData();
+
+  try {
+    // Prepare request data
+    const requestData = {
+      itemName,
+      itemCost: parseFloat(itemCost),
+      imageBase64: base64Image,
+      findAlternatives: true // Request alternative search
+    };
+    
+    // Add advanced data if available
+    if (advancedData) {
+      requestData.advancedData = advancedData;
+    }
+    
+    // Make request to backend API
+    const response = await fetch("/api/analyze", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(requestData)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Request failed with status ${response.status}`);
     }
 
-    // Show loading state with animation
-    resultContainer.classList.remove("hidden");
-    loadingIndicator.classList.remove("hidden");
-    resultContent.innerHTML = "";
+    const data = await response.json();
+
+    // Stop the loading animation
+    stopLoadingAnimation();
+
+    // "Buy" or "Don't Buy" logic for styling
+    const recommendationClass = data.recommendation.toLowerCase().includes("don't") ? 
+      "dont-buy" : "buy";
+
+    // Random Munger quotes for additional wisdom
+    const mungerQuotes = [
+      "Take a simple idea and take it seriously.",
+      "The big money is not in the buying and selling, but in the waiting.",
+      "All intelligent investing is value investing.",
+      "Knowing what you don't know is more useful than being brilliant.",
+      "Spend each day trying to be a little wiser than you were when you woke up."
+    ];
     
-    // Start the loading message rotation
-    startLoadingAnimation();
+    const randomQuoteIndex = Math.floor(Math.random() * mungerQuotes.length);
 
-    let base64Image = null;
+    let resultsHTML = `
+      <h2>Purchase Analysis</h2>
+      <p><strong>Item:</strong> ${data.name}</p>
+      <p><strong>Cost:</strong> $${parseFloat(data.cost).toFixed(2)}</p>
+    `;
 
-    // Use camera-captured image or uploaded file
-    try {
-      if (capturedImage) {
-        base64Image = capturedImage.split(",")[1];
-      } else if (imageUpload.files[0]) {
-        const file = imageUpload.files[0];
-        base64Image = await fileToBase64(file);
-      }
-    } catch (error) {
-      console.error("Error processing image:", error);
+    // Add interesting facts if available
+    if (data.facts) {
+      resultsHTML += `<p><strong>Interesting Facts:</strong> ${data.facts}</p>`;
     }
-    
-    // Get advanced analysis data if available
-    const advancedData = getAdvancedAnalysisData();
 
-    try {
-      // Prepare request data
-      const requestData = {
-        itemName,
-        itemCost: parseFloat(itemCost),
-        imageBase64: base64Image,
-        findAlternatives: true // New flag to request alternative search
-      };
+    // Add alternative product suggestion if available (now with retailer info)
+    if (data.alternative && data.alternative.name && data.alternative.url) {
+      const savings = parseFloat(data.cost) - parseFloat(data.alternative.price);
+      const savingsPercent = (savings / parseFloat(data.cost) * 100).toFixed(1);
+      const retailerName = data.alternative.retailer || 
+                         new URL(data.alternative.url).hostname.replace('www.', '').split('.')[0];
       
-      // Add advanced data if available
-      if (advancedData) {
-        requestData.advancedData = advancedData;
-      }
-      
-      // Make request to backend API
-      const response = await fetch("/api/analyze", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(requestData)
-      });
-
-      if (!response.ok) {
-        throw new Error(`Request failed with status ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      // Stop the loading animation
-      stopLoadingAnimation();
-
-      // "Buy" or "Don't Buy" logic for styling
-      const recommendationClass = data.recommendation.toLowerCase().includes("don't") ? 
-        "dont-buy" : "buy";
-
-      // Random Munger quotes for additional wisdom
-      const mungerQuotes = [
-        "Take a simple idea and take it seriously.",
-        "The big money is not in the buying and selling, but in the waiting.",
-        "All intelligent investing is value investing.",
-        "Knowing what you don't know is more useful than being brilliant.",
-        "Spend each day trying to be a little wiser than you were when you woke up."
-      ];
-      
-      const randomQuoteIndex = Math.floor(Math.random() * mungerQuotes.length);
-
-      let resultsHTML = `
-        <h2>Purchase Analysis</h2>
-        <p><strong>Item:</strong> ${data.name}</p>
-        <p><strong>Cost:</strong> $${parseFloat(data.cost).toFixed(2)}</p>
-      `;
-
-      // Add interesting facts if available
-      if (data.facts) {
-        resultsHTML += `<p><strong>Interesting Facts:</strong> ${data.facts}</p>`;
-      }
-
-      // Add alternative product suggestion if available
-      if (data.alternative && data.alternative.name && data.alternative.url) {
-        resultsHTML += `
-          <div class="alternative-suggestion">
-            <h3>Cheaper Alternative Found:</h3>
-            <p><strong>${data.alternative.name}</strong> - $${parseFloat(data.alternative.price).toFixed(2)}</p>
-            <p><a href="${data.alternative.url}" target="_blank" class="alternative-link">
-              <i class="fas fa-external-link-alt"></i> View Alternative
-            </a></p>
-            <p class="savings-text">Potential Savings: $${(parseFloat(data.cost) - parseFloat(data.alternative.price)).toFixed(2)}</p>
-          </div>
-        `;
-      }
-
-      // Add recommendation and explanation
       resultsHTML += `
-        <div class="recommendation-container">
-          <h3>Charlie Munger's Recommendation:</h3>
-          <div class="recommendation ${recommendationClass}">
-            ${data.recommendation}
-          </div>
-          <p>${data.explanation}</p>
+        <div class="alternative-suggestion">
+          <h3>Cheaper Alternative Found:</h3>
+          <p><strong>${data.alternative.name}</strong> - $${parseFloat(data.alternative.price).toFixed(2)}</p>
+          <p class="retailer-info">From <strong>${retailerName}</strong></p>
+          <p><a href="${data.alternative.url}" target="_blank" rel="noopener noreferrer" class="alternative-link">
+            <i class="fas fa-external-link-alt"></i> View Alternative
+          </a></p>
+          <p class="savings-text">Potential Savings: $${savings.toFixed(2)} (${savingsPercent}%)</p>
         </div>
-        
-        <div class="munger-quote">
-          "${mungerQuotes[randomQuoteIndex]}"
-          <div style="text-align: right; margin-top: 8px; font-weight: 500;">— Charlie Munger</div>
-        </div>
-      `;
-
-      // Hide loading indicator and show results
-      loadingIndicator.classList.add("hidden");
-      resultContent.innerHTML = resultsHTML;
-
-      // Smooth scroll to results
-      resultContainer.scrollIntoView({ 
-        behavior: 'smooth',
-        block: 'start'
-      });
-
-    } catch (error) {
-      console.error("Error:", error);
-      
-      // Stop the loading animation
-      stopLoadingAnimation();
-      
-      // Show error with animation
-      loadingIndicator.classList.add("hidden");
-      resultContent.innerHTML = `
-        <h2>Oops! Something went wrong</h2>
-        <p>We couldn't analyze your item at this time. Please try again later.</p>
-        <p><small>Error details: ${error.message}</small></p>
       `;
     }
-  });
+
+    // Add recommendation and explanation
+    resultsHTML += `
+      <div class="recommendation-container">
+        <h3>Charlie Munger's Recommendation:</h3>
+        <div class="recommendation ${recommendationClass}">
+          ${data.recommendation}
+        </div>
+        <p>${data.explanation}</p>
+      </div>
+      
+      <div class="munger-quote">
+        "${mungerQuotes[randomQuoteIndex]}"
+        <div style="text-align: right; margin-top: 8px; font-weight: 500;">— Charlie Munger</div>
+      </div>
+    `;
+
+    // Hide loading indicator and show results
+    loadingIndicator.classList.add("hidden");
+    resultContent.innerHTML = resultsHTML;
+
+    // Smooth scroll to results
+    resultContainer.scrollIntoView({ 
+      behavior: 'smooth',
+      block: 'start'
+    });
+
+  } catch (error) {
+    console.error("Error:", error);
+    
+    // Stop the loading animation
+    stopLoadingAnimation();
+    
+    // Show error with animation
+    loadingIndicator.classList.add("hidden");
+    resultContent.innerHTML = `
+      <h2>Oops! Something went wrong</h2>
+      <p>We couldn't analyze your item at this time. Please try again later.</p>
+      <p><small>Error details: ${error.message}</small></p>
+    `;
+  }
+});
+
   
   // Initialize the UI state
   updateItemNameRequirement();
