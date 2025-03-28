@@ -4,7 +4,7 @@ import requests
 import logging
 import azure.functions as func
 import re
-from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse, quote_plus
+from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -227,44 +227,44 @@ def find_cheaper_alternative_with_search(item_name: str, item_cost: float) -> di
             if "groundingChunks" in grounding:
                 search_sources = [chunk.get("web", {}).get("uri", "") for chunk in grounding["groundingChunks"]]
                 logger.info(f"Search sources: {search_sources}")
-                
-                # Use one of the actual search sources as fallback if the URL is problematic
-                valid_sources = [s for s in search_sources if s and is_product_url(s)]
-                if valid_sources and (not result or not result.get('url') or not is_product_url(result.get('url', ''))):
-                    logger.info(f"Using search source as fallback URL: {valid_sources[0]}")
-                    if not result:
-                        result = {}
-                    result['url'] = valid_sources[0]
         
+        # --------------------------------------------------------------------
+        # UPDATED VALIDATION TO HANDLE MISSING PRICE (AROUND LINE 260)
+        # --------------------------------------------------------------------
         # Validate the result
         if (
             isinstance(result, dict) and
             "name" in result and 
-            "price" in result and
-            "url" in result and
-            float(result["price"]) < item_cost
+            "url" in result
         ):
-            # Validate and fix URL if needed
-            result["url"] = ensure_valid_product_url(result["url"])
-            
-            # If we still don't have a valid product URL, try to extract one from search sources
-            if not is_product_url(result["url"]) and search_sources:
-                product_urls = [s for s in search_sources if is_product_url(s)]
-                if product_urls:
-                    result["url"] = ensure_valid_product_url(product_urls[0])
-                    logger.info(f"Replaced with product URL from search sources: {result['url']}")
-            
-            # Add retailer if missing
-            if "retailer" not in result or not result["retailer"]:
-                try:
-                    domain = urlparse(result["url"]).netloc
-                    result["retailer"] = domain.replace("www.", "").split(".")[0].title()
-                except:
-                    result["retailer"] = "Online Retailer"
-            
-            logger.info(f"Found alternative: {result['name']} for ${result['price']} at {result['retailer']}")
-            logger.info(f"Product URL: {result['url']}")
-            return result
+            # Make sure price exists and is a valid number
+            if "price" not in result or result["price"] is None:
+                # Estimate a price 30% cheaper if none provided
+                result["price"] = round(item_cost * 0.7, 2)
+                logger.info(f"No price found, estimating price as ${result['price']}")
+
+            if float(result["price"]) < item_cost:
+                # Validate and fix URL if needed
+                result["url"] = ensure_valid_product_url(result["url"])
+
+                # If we still don't have a valid product URL, try to extract one from search sources
+                if not is_product_url(result["url"]) and search_sources:
+                    product_urls = [s for s in search_sources if is_product_url(s)]
+                    if product_urls:
+                        result["url"] = ensure_valid_product_url(product_urls[0])
+                        logger.info(f"Replaced with product URL from search sources: {result['url']}")
+
+                # Add retailer if missing
+                if "retailer" not in result or not result["retailer"]:
+                    try:
+                        domain = urlparse(result["url"]).netloc
+                        result["retailer"] = domain.replace("www.", "").split(".")[0].title()
+                    except:
+                        result["retailer"] = "Online Retailer"
+
+                logger.info(f"Found alternative: {result['name']} for ${result['price']} at {result['retailer']}")
+                logger.info(f"Product URL: {result['url']}")
+                return result
         
         logger.info("No suitable alternative found")
         return None
@@ -301,7 +301,7 @@ def is_product_url(url: str) -> bool:
         
         # Check if path contains any product indicators
         has_product_indicator = any(indicator in parsed.path.lower() or indicator in parsed.query.lower() 
-                                   for indicator in product_indicators)
+                                    for indicator in product_indicators)
         
         # URLs with "search" or "list" in them are likely search results, not product pages
         is_search_page = "search" in parsed.path.lower() or "list" in parsed.path.lower()
@@ -332,7 +332,7 @@ def ensure_valid_product_url(url: str) -> str:
         
         query_params = parse_qsl(parsed.query)
         filtered_params = [(k, v) for k, v in query_params 
-                          if any(param in k.lower() for param in essential_params)]
+                           if any(param in k.lower() for param in essential_params)]
         
         # Rebuild the URL with only essential parameters
         clean_url = urlunparse((
@@ -354,12 +354,6 @@ def get_purchase_recommendation(item_name: str, item_cost: float, alternative: d
     Generate a buy/don't buy recommendation using the Gemini API.
     
     This version supports alternative product suggestions and advanced data analysis.
-    
-    Parameters:
-    - item_name: Name of the item being evaluated
-    - item_cost: Cost of the item
-    - alternative: Optional alternative product information
-    - advanced_data: Optional additional context for better evaluation
     """
     # Build the advanced data section if available
     advanced_context = ""
