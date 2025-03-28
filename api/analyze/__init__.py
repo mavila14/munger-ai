@@ -11,7 +11,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("munger_ai_api")
 
 # Define Gemini API key
-GEMINI_API_KEY = "AIzaSyB-RIjhhODp6aPTzqVcwbXD894oebXFCUY"
+GEMINI_API_KEY = "REPLACE_THIS_WITH_YOUR_GEMINI_KEY"
+
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
     """
@@ -94,6 +95,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             mimetype="application/json"
         )
 
+
 def analyze_image_with_gemini(item_name: str, image_base64: str) -> dict:
     """
     Analyze an image using the Gemini API to identify and provide facts about an item.
@@ -149,6 +151,7 @@ def analyze_image_with_gemini(item_name: str, image_base64: str) -> dict:
             "facts": f"Error analyzing image: {e}"
         }
 
+
 def find_cheaper_alternative_with_search(item_name: str, item_cost: float) -> dict:
     """
     Find cheaper alternatives using Google Search Grounding with Gemini 2.0
@@ -180,7 +183,6 @@ def find_cheaper_alternative_with_search(item_name: str, item_cost: float) -> di
     If you can't find a real alternative that's cheaper, return null.
     """
     
-    # Use Gemini 2.0 with Search as a tool
     gemini_url = (
         f"https://generativelanguage.googleapis.com/v1beta/models/"
         f"gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
@@ -222,38 +224,32 @@ def find_cheaper_alternative_with_search(item_name: str, item_cost: float) -> di
         
         # Log the search sources if available (for debugging)
         search_sources = []
-        if "groundingMetadata" in gemini_response["candidates"][0]:
+        if "candidates" in gemini_response and "groundingMetadata" in gemini_response["candidates"][0]:
             grounding = gemini_response["candidates"][0]["groundingMetadata"]
             if "groundingChunks" in grounding:
                 search_sources = [chunk.get("web", {}).get("uri", "") for chunk in grounding["groundingChunks"]]
                 logger.info(f"Search sources: {search_sources}")
         
-        # --------------------------------------------------------------------
-        # UPDATED VALIDATION TO HANDLE MISSING PRICE (AROUND LINE 260)
-        # --------------------------------------------------------------------
-        # Validate the result
+        # Validate the JSON result
         if (
             isinstance(result, dict) and
             "name" in result and 
             "url" in result
         ):
-            # Make sure price exists and is a valid number
+            # If Gemini gave no price, estimate one that is cheaper
             if "price" not in result or result["price"] is None:
-                # Estimate a price 30% cheaper if none provided
                 result["price"] = round(item_cost * 0.7, 2)
                 logger.info(f"No price found, estimating price as ${result['price']}")
-
+            
             if float(result["price"]) < item_cost:
-                # Validate and fix URL if needed
+                # Ensure the link has https:// and remove unneeded URL params
                 result["url"] = ensure_valid_product_url(result["url"])
-
-                # If we still don't have a valid product URL, try to extract one from search sources
-                if not is_product_url(result["url"]) and search_sources:
-                    product_urls = [s for s in search_sources if is_product_url(s)]
-                    if product_urls:
-                        result["url"] = ensure_valid_product_url(product_urls[0])
-                        logger.info(f"Replaced with product URL from search sources: {result['url']}")
-
+                
+                # If it's not recognized as a product URL, return None
+                if not is_product_url(result["url"]):
+                    logger.info("No product link found or link is invalid. Returning None.")
+                    return None
+                
                 # Add retailer if missing
                 if "retailer" not in result or not result["retailer"]:
                     try:
@@ -261,7 +257,7 @@ def find_cheaper_alternative_with_search(item_name: str, item_cost: float) -> di
                         result["retailer"] = domain.replace("www.", "").split(".")[0].title()
                     except:
                         result["retailer"] = "Online Retailer"
-
+                
                 logger.info(f"Found alternative: {result['name']} for ${result['price']} at {result['retailer']}")
                 logger.info(f"Product URL: {result['url']}")
                 return result
@@ -272,6 +268,7 @@ def find_cheaper_alternative_with_search(item_name: str, item_cost: float) -> di
     except Exception as e:
         logger.error(f"Error searching for alternatives with Gemini: {str(e)}")
         return None
+
 
 def is_product_url(url: str) -> bool:
     """
@@ -299,16 +296,19 @@ def is_product_url(url: str) -> bool:
         # Check if domain contains any shopping domain keywords
         is_shopping_domain = any(shop in parsed.netloc.lower() for shop in shopping_domains)
         
-        # Check if path contains any product indicators
-        has_product_indicator = any(indicator in parsed.path.lower() or indicator in parsed.query.lower() 
-                                    for indicator in product_indicators)
+        # Check if path or query has product indicators
+        has_product_indicator = any(
+            indicator in parsed.path.lower() or indicator in parsed.query.lower() 
+            for indicator in product_indicators
+        )
         
-        # URLs with "search" or "list" in them are likely search results, not product pages
+        # URLs with "search" or "list" in path are likely search results, not product pages
         is_search_page = "search" in parsed.path.lower() or "list" in parsed.path.lower()
         
         return (is_shopping_domain and has_product_indicator) or (is_shopping_domain and not is_search_page)
     except:
         return False
+
 
 def ensure_valid_product_url(url: str) -> str:
     """
@@ -331,8 +331,10 @@ def ensure_valid_product_url(url: str) -> str:
         essential_params = ["id", "pid", "product", "item", "p", "productId", "itemId", "skuId", "sku"]
         
         query_params = parse_qsl(parsed.query)
-        filtered_params = [(k, v) for k, v in query_params 
-                           if any(param in k.lower() for param in essential_params)]
+        filtered_params = [
+            (k, v) for k, v in query_params
+            if any(param in k.lower() for param in essential_params)
+        ]
         
         # Rebuild the URL with only essential parameters
         clean_url = urlunparse((
@@ -346,8 +348,9 @@ def ensure_valid_product_url(url: str) -> str:
         
         return clean_url
     except:
-        # If any errors occur in parsing, return the original URL
+        # If any errors occur, return the original URL
         return url
+
 
 def get_purchase_recommendation(item_name: str, item_cost: float, alternative: dict = None, advanced_data: dict = None) -> dict:
     """
@@ -378,12 +381,16 @@ def get_purchase_recommendation(item_name: str, item_cost: float, alternative: d
     # Build the alternative product section if available
     alternative_context = ""
     if alternative:
+        alt_price = float(alternative['price'])
+        alt_savings = item_cost - alt_price
+        alt_savings_pct = (alt_savings / item_cost * 100) if item_cost else 0.0
+
         alternative_context = f"\nCheaper alternative found:\n"
         alternative_context += f"- Name: {alternative['name']}\n"
-        alternative_context += f"- Price: ${alternative['price']:.2f}\n"
+        alternative_context += f"- Price: ${alt_price:.2f}\n"
         if 'retailer' in alternative:
             alternative_context += f"- Retailer: {alternative['retailer']}\n"
-        alternative_context += f"- Savings: ${item_cost - alternative['price']:.2f} ({((item_cost - alternative['price'])/item_cost*100):.1f}%)\n"
+        alternative_context += f"- Savings: ${alt_savings:.2f} ({alt_savings_pct:.1f}%)\n"
     
     prompt = f"""
     As Charlie Munger, the legendary investor and business partner of Warren Buffett, analyze the following purchase decision:
@@ -449,8 +456,13 @@ def get_purchase_recommendation(item_name: str, item_cost: float, alternative: d
         logger.error(f"Error generating recommendation: {str(e)}")
         return {
             "decision": "Consider carefully",
-            "explanation": f"Unable to provide a definitive recommendation for {item_name} due to insufficient information. Consider your personal financial situation and necessity of the purchase."
+            "explanation": (
+                f"Unable to provide a definitive recommendation for {item_name} "
+                "due to insufficient information. Consider your personal financial "
+                "situation and necessity of the purchase."
+            )
         }
+
 
 def extract_json(text: str) -> dict:
     """
