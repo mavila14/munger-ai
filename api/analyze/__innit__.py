@@ -3,6 +3,8 @@ import base64
 import requests
 import logging
 import azure.functions as func
+import re
+from urllib.parse import quote_plus
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -11,11 +13,16 @@ logger = logging.getLogger("munger_ai_api")
 # Define Gemini API key
 GEMINI_API_KEY = "AIzaSyB-RIjhhODp6aPTzqVcwbXD894oebXFCUY"
 
+# Define Search API key (using Bing Search API)
+SEARCH_API_KEY = "YOUR_BING_SEARCH_API_KEY"  # Replace with your actual key
+SEARCH_ENDPOINT = "https://api.bing.microsoft.com/v7.0/search"
+
 def main(req: func.HttpRequest) -> func.HttpResponse:
     """
     Azure Functions HTTP trigger function for analyzing purchase decisions.
     
-    This function uses the Gemini API to make a direct buy/don't buy recommendation.
+    This function uses the Gemini API to make a direct buy/don't buy recommendation
+    and can search for cheaper alternatives.
     """
     try:
         body = req.get_json()
@@ -26,19 +33,37 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     item_cost = float(body.get("itemCost", 0))
     image_base64 = body.get("imageBase64", None)
     advanced_data = body.get("advancedData", None)
+    find_alternatives = body.get("findAlternatives", False)
     
     try:
-        # If image is provided, get item details from image
+        # If image is provided but no item name, get item details from image
         item_details = {}
         if image_base64:
             item_details = analyze_image_with_gemini(item_name, image_base64)
             
-            # If image analysis returns a different item name, use it
-            if item_details.get("name") and item_details["name"] != "Error":
+            # If image analysis returns an item name and the user didn't provide one
+            if item_details.get("name") and item_details["name"] != "Error" and not item_name:
                 item_name = item_details["name"]
+                logger.info(f"Item identified from image: {item_name}")
+        
+        # If we still have no item name, return an error
+        if not item_name:
+            return func.HttpResponse(
+                json.dumps({
+                    "error": "No item name could be determined",
+                    "message": "Please provide an item name or a clearer image"
+                }),
+                status_code=400,
+                mimetype="application/json"
+            )
+        
+        # Find cheaper alternatives if requested
+        alternative = None
+        if find_alternatives and item_name:
+            alternative = find_cheaper_alternative(item_name, item_cost)
         
         # Get buy/don't buy recommendation with advanced data if available
-        recommendation = get_purchase_recommendation(item_name, item_cost, advanced_data)
+        recommendation = get_purchase_recommendation(item_name, item_cost, alternative, advanced_data)
         
         # Build response
         response_data = {
@@ -51,6 +76,10 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         # Add image analysis details if available
         if image_base64 and "facts" in item_details:
             response_data["facts"] = item_details["facts"]
+        
+        # Add alternative if found
+        if alternative:
+            response_data["alternative"] = alternative
         
         return func.HttpResponse(
             json.dumps(response_data),
@@ -124,15 +153,130 @@ def analyze_image_with_gemini(item_name: str, image_base64: str) -> dict:
             "facts": f"Error analyzing image: {e}"
         }
 
-def get_purchase_recommendation(item_name: str, item_cost: float, advanced_data: dict = None) -> dict:
+def find_cheaper_alternative(item_name: str, item_cost: float) -> dict:
+    """
+    Search for cheaper alternatives to the item.
+    
+    Returns a dict with name, price, and URL of a cheaper alternative, or None if not found.
+    """
+    try:
+        # For demo purposes, if the search API key is not set, use Gemini to simulate a search
+        if SEARCH_API_KEY == "YOUR_BING_SEARCH_API_KEY":
+            return _simulate_search_with_gemini(item_name, item_cost)
+        
+        # Construct search query for cheaper alternatives
+        search_query = f"cheaper alternative to {item_name} less than ${item_cost}"
+        
+        headers = {
+            'Ocp-Apim-Subscription-Key': SEARCH_API_KEY
+        }
+        
+        params = {
+            'q': search_query,
+            'count': 5,
+            'offset': 0,
+            'mkt': 'en-US'
+        }
+        
+        response = requests.get(SEARCH_ENDPOINT, headers=headers, params=params)
+        response.raise_for_status()
+        search_results = response.json()
+        
+        # Process search results
+        if 'webPages' in search_results and 'value' in search_results['webPages']:
+            for result in search_results['webPages']['value']:
+                # Extract price from snippet if possible (this is simplified)
+                price_match = re.search(r'\$(\d+\.?\d*)', result.get('snippet', ''))
+                if price_match:
+                    price = float(price_match.group(1))
+                    if price < item_cost:
+                        return {
+                            "name": result.get('name', 'Cheaper Alternative'),
+                            "price": price,
+                            "url": result.get('url')
+                        }
+        
+        logger.info("No cheaper alternative found using search API")
+        return None
+        
+    except Exception as e:
+        logger.error(f"Error searching for alternatives: {str(e)}")
+        return None
+
+def _simulate_search_with_gemini(item_name: str, item_cost: float) -> dict:
+    """
+    Use Gemini API to simulate finding a cheaper alternative when no search API key is available.
+    This is a fallback method for demonstration purposes.
+    """
+    prompt = f"""
+    Find a cheaper alternative to {item_name} that costs less than ${item_cost}.
+    
+    Return only valid JSON in this format:
+    {{
+      "name": "Alternative Product Name",
+      "price": 123.45,
+      "url": "https://example.com/product"
+    }}
+    
+    Make sure the URL is a valid and plausible shopping URL (like Amazon, Walmart, etc.)
+    and the price is less than ${item_cost}. If you can't confidently suggest a real
+    alternative, return null.
+    """
+    
+    gemini_url = (
+        f"https://generativelanguage.googleapis.com/v1beta/models/"
+        f"gemini-1.5-pro:generateContent?key={GEMINI_API_KEY}"
+    )
+    
+    request_body = {
+        "contents": [
+            {
+                "parts": [
+                    {"text": prompt}
+                ]
+            }
+        ],
+        "generationConfig": {
+            "temperature": 0.2,
+            "maxOutputTokens": 512,
+            "topP": 0.8
+        }
+    }
+    
+    headers = {"Content-Type": "application/json"}
+    
+    try:
+        resp = requests.post(gemini_url, headers=headers, json=request_body)
+        resp.raise_for_status()
+        gemini_response = resp.json()
+        text = gemini_response["candidates"][0]["content"]["parts"][0]["text"]
+        result = extract_json(text)
+        
+        # Validate the result
+        if (
+            isinstance(result, dict) and
+            "name" in result and 
+            "price" in result and
+            "url" in result and
+            float(result["price"]) < item_cost
+        ):
+            return result
+        return None
+        
+    except Exception as e:
+        logger.error(f"Error generating alternative with Gemini: {str(e)}")
+        return None
+
+def get_purchase_recommendation(item_name: str, item_cost: float, alternative: dict = None, advanced_data: dict = None) -> dict:
     """
     Generate a buy/don't buy recommendation using the Gemini API.
     
-    This version supports advanced data analysis for better recommendations.
+    This version supports alternative product suggestions and advanced data analysis.
     
     Parameters:
     - item_name: Name of the item being evaluated
     - item_cost: Cost of the item
+    - alternative: Optional alternative product information
     - advanced_data: Optional additional context for better evaluation
     """
     # Build the advanced data section if available
@@ -155,12 +299,21 @@ def get_purchase_recommendation(item_name: str, item_cost: float, advanced_data:
         if advanced_data.get("notes"):
             advanced_context += f"- User notes: {advanced_data['notes']}\n"
     
+    # Build the alternative product section if available
+    alternative_context = ""
+    if alternative:
+        alternative_context = f"\nCheaper alternative found:\n"
+        alternative_context += f"- Name: {alternative['name']}\n"
+        alternative_context += f"- Price: ${alternative['price']:.2f}\n"
+        alternative_context += f"- Savings: ${item_cost - alternative['price']:.2f} ({((item_cost - alternative['price'])/item_cost*100):.1f}%)\n"
+    
     prompt = f"""
     As Charlie Munger, the legendary investor and business partner of Warren Buffett, analyze the following purchase decision:
 
     Item: {item_name}
     Cost: ${item_cost:.2f}
     {advanced_context}
+    {alternative_context}
 
     Provide a clear "Buy" or "Don't Buy" recommendation based on your principles of rational decision-making, opportunity cost, and long-term value.
     
@@ -169,7 +322,7 @@ def get_purchase_recommendation(item_name: str, item_cost: float, advanced_data:
     - The frequency of use and utility derived
     - The expected lifespan of the item
     - The opportunity cost of the money spent
-    - Whether cheaper alternatives exist that may provide similar utility
+    - Whether cheaper alternatives exist that may provide similar utility (especially consider the alternative provided if available)
     - The long-term impact of this purchase on financial goals
 
     Return ONLY a JSON object with this structure:
