@@ -13,6 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const cancelCameraBtn = document.getElementById("cancelCameraBtn");
   const itemNameInput = document.getElementById("itemName");
   const itemCostInput = document.getElementById("itemCost");
+  const itemNameLabel = document.querySelector('label[for="itemName"]');
   
   // Advanced analysis elements
   const advancedToggle = document.getElementById("advancedToggle");
@@ -26,6 +27,23 @@ document.addEventListener("DOMContentLoaded", () => {
   // Camera stream variable
   let stream = null;
   let capturedImage = null;
+  let hasImage = false;
+  
+  // Function to update the item name field requirements based on image presence
+  function updateItemNameRequirement() {
+    if (hasImage) {
+      // Make name field optional when image is present
+      itemNameLabel.innerHTML = "What are you buying? <span class='optional-text'>(Optional when image is uploaded)</span>";
+      itemNameInput.required = false;
+    } else {
+      // Make name field required when no image
+      itemNameLabel.innerHTML = "What are you buying?";
+      itemNameInput.required = true;
+    }
+    
+    // Update validation state
+    validateInputs();
+  }
   
   // Toggle advanced analysis section
   advancedToggle.addEventListener("click", () => {
@@ -88,7 +106,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const nameValue = itemNameInput.value.trim();
     const costValue = itemCostInput.value.trim();
     
-    if (nameValue && costValue && parseFloat(costValue) > 0) {
+    if ((hasImage || nameValue) && costValue && parseFloat(costValue) > 0) {
       analyzeBtn.classList.add("ready");
     } else {
       analyzeBtn.classList.remove("ready");
@@ -147,6 +165,10 @@ document.addEventListener("DOMContentLoaded", () => {
       imagePreview.querySelector("img").style.opacity = "1";
     }, 10);
 
+    // Update image flag and field requirements
+    hasImage = true;
+    updateItemNameRequirement();
+
     // Stop camera and hide camera container
     stopCamera();
     captureBtn.classList.remove("active");
@@ -191,8 +213,15 @@ document.addEventListener("DOMContentLoaded", () => {
         setTimeout(() => {
           imagePreview.querySelector("img").style.opacity = "1";
         }, 10);
+        
+        // Update image flag and field requirements
+        hasImage = true;
+        updateItemNameRequirement();
       };
       reader.readAsDataURL(file);
+    } else {
+      hasImage = false;
+      updateItemNameRequirement();
     }
   });
 
@@ -201,6 +230,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "Consulting Charlie Munger's wisdom...",
     "Analyzing purchase value...",
     "Calculating opportunity cost...",
+    "Searching for cheaper alternatives...",
     "Applying mental models...",
     "Making investment decision..."
   ];
@@ -252,12 +282,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const itemName = itemNameInput.value.trim();
     const itemCost = itemCostInput.value.trim();
 
-    if (!itemName || !itemCost) {
+    // Modified validation to account for images
+    if ((!itemName && !hasImage) || !itemCost) {
       // Shake animation for invalid input
       analyzeBtn.classList.add("shake");
       setTimeout(() => {
         analyzeBtn.classList.remove("shake");
-        alert("Please provide both the item name and cost.");
+        if (!itemCost) {
+          alert("Please provide the item cost.");
+        } else {
+          alert("Please either provide an item name or upload an image.");
+        }
       }, 500);
       return;
     }
@@ -292,7 +327,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const requestData = {
         itemName,
         itemCost: parseFloat(itemCost),
-        imageBase64: base64Image
+        imageBase64: base64Image,
+        findAlternatives: true // New flag to request alternative search
       };
       
       // Add advanced data if available
@@ -344,6 +380,20 @@ document.addEventListener("DOMContentLoaded", () => {
         resultsHTML += `<p><strong>Interesting Facts:</strong> ${data.facts}</p>`;
       }
 
+      // Add alternative product suggestion if available
+      if (data.alternative && data.alternative.name && data.alternative.url) {
+        resultsHTML += `
+          <div class="alternative-suggestion">
+            <h3>Cheaper Alternative Found:</h3>
+            <p><strong>${data.alternative.name}</strong> - $${parseFloat(data.alternative.price).toFixed(2)}</p>
+            <p><a href="${data.alternative.url}" target="_blank" class="alternative-link">
+              <i class="fas fa-external-link-alt"></i> View Alternative
+            </a></p>
+            <p class="savings-text">Potential Savings: $${(parseFloat(data.cost) - parseFloat(data.alternative.price)).toFixed(2)}</p>
+          </div>
+        `;
+      }
+
       // Add recommendation and explanation
       resultsHTML += `
         <div class="recommendation-container">
@@ -385,4 +435,7 @@ document.addEventListener("DOMContentLoaded", () => {
       `;
     }
   });
+  
+  // Initialize the UI state
+  updateItemNameRequirement();
 });
