@@ -350,6 +350,19 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const data = await response.json();
+      
+      // Add debugging logs for API response
+      console.log("API response received:", data);
+      if (data.alternative) {
+        console.log("Alternative data:", data.alternative);
+        
+        // Validate alternative data
+        if (!data.alternative.name) console.warn("Alternative missing name");
+        if (!data.alternative.price) console.warn("Alternative missing price");
+        if (!data.alternative.url) console.warn("Alternative missing URL");
+      } else {
+        console.log("No alternative data in response");
+      }
 
       // Stop the loading animation
       stopLoadingAnimation();
@@ -380,7 +393,7 @@ document.addEventListener("DOMContentLoaded", () => {
         resultsHTML += `<p><strong>Interesting Facts:</strong> ${data.facts}</p>`;
       }
 
-      // MOVED: Add recommendation and explanation BEFORE alternatives
+      // Build recommendation section
       resultsHTML += `
         <div class="recommendation-container">
           <h3>Charlie Munger's Recommendation:</h3>
@@ -391,37 +404,61 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>
       `;
 
-      // Add alternative product suggestion if available (now with retailer info)
-      if (data.alternative && data.alternative.name && data.alternative.url) {
-        const savings = parseFloat(data.cost) - parseFloat(data.alternative.price);
-        const savingsPercent = (savings / parseFloat(data.cost) * 100).toFixed(1);
+      // Check if alternative exists and has the required properties
+      console.log("Checking alternative data...");
+      if (data.alternative && 
+          typeof data.alternative === 'object' && 
+          data.alternative.name && 
+          data.alternative.url) {
         
-        // Extract retailer name from the data or from the URL
+        console.log("Building alternative HTML section");
+        
+        // Get price safely with fallback
+        const altPrice = data.alternative.price ? parseFloat(data.alternative.price) : 0;
+        const itemPrice = parseFloat(data.cost);
+        
+        // Only calculate savings if we have valid prices
+        let savingsText = "";
+        if (data.alternative.price && altPrice < itemPrice) {
+          const savings = itemPrice - altPrice;
+          const savingsPercent = (savings / itemPrice * 100).toFixed(1);
+          savingsText = `<p class="savings-text">Potential Savings: $${savings.toFixed(2)} (${savingsPercent}%)</p>`;
+        }
+        
         let retailerName = data.alternative.retailer || "";
         if (!retailerName && data.alternative.url) {
           try {
-            retailerName = new URL(data.alternative.url).hostname
+            const url = new URL(data.alternative.url);
+            retailerName = url.hostname
               .replace('www.', '')
               .split('.')[0]
-              .charAt(0).toUpperCase() + new URL(data.alternative.url).hostname.replace('www.', '').split('.')[0].slice(1);
+              .charAt(0).toUpperCase() + url.hostname.replace('www.', '').split('.')[0].slice(1);
           } catch (e) {
+            console.error("Error parsing URL:", e);
             retailerName = "Online Retailer";
           }
         }
         
+        // The price display is now conditional
+        const priceDisplay = data.alternative.price ? 
+          `- $${parseFloat(data.alternative.price).toFixed(2)}` : 
+          "";
+        
         resultsHTML += `
           <div class="alternative-suggestion">
             <h3>Cheaper Alternative Found:</h3>
-            <p><strong>${data.alternative.name}</strong> - $${parseFloat(data.alternative.price).toFixed(2)}</p>
+            <p><strong>${data.alternative.name}</strong> ${priceDisplay}</p>
             <p class="retailer-info">From <strong>${retailerName}</strong></p>
             <p>
               <a href="${data.alternative.url}" target="_blank" rel="noopener noreferrer" class="alternative-link">
                 <i class="fas fa-external-link-alt"></i> View Alternative
               </a>
             </p>
-            <p class="savings-text">Potential Savings: $${savings.toFixed(2)} (${savingsPercent}%)</p>
+            ${savingsText}
           </div>
         `;
+      } else {
+        console.log("Alternative data not available or incomplete:", data.alternative);
       }
       
       // Add Munger quote at the end
@@ -436,22 +473,35 @@ document.addEventListener("DOMContentLoaded", () => {
       loadingIndicator.classList.add("hidden");
       resultContent.innerHTML = resultsHTML;
 
-      // Add fixed event handlers for alternative links
+      // Setup alternative link handlers
+      console.log("Setting up alternative link handlers");
       setTimeout(() => {
         const alternativeLinks = document.querySelectorAll('.alternative-link');
-        alternativeLinks.forEach(link => {
-          link.addEventListener('click', function(e) {
-            // Prevent default behavior for the link
-            e.preventDefault();
-            
-            // Get the URL from the href attribute
-            const url = this.getAttribute('href');
-            
-            // Open the URL in a new tab/window - use window.open directly for better cross-browser support
-            window.open(url, '_blank', 'noopener,noreferrer');
+        console.log(`Found ${alternativeLinks.length} alternative links`);
+        
+        if (alternativeLinks.length > 0) {
+          alternativeLinks.forEach(link => {
+            console.log(`Adding handler to link: ${link.getAttribute('href')}`);
+            link.addEventListener('click', function(e) {
+              e.preventDefault();
+              const url = this.getAttribute('href');
+              console.log(`Opening URL: ${url}`);
+              window.open(url, '_blank', 'noopener,noreferrer');
+            });
           });
+        }
+        
+        // Also add a global delegated handler as a fallback
+        document.body.addEventListener('click', function(e) {
+          const link = e.target.closest('.alternative-link');
+          if (link) {
+            e.preventDefault();
+            const url = link.getAttribute('href');
+            console.log(`Global handler opening URL: ${url}`);
+            window.open(url, '_blank', 'noopener,noreferrer');
+          }
         });
-      }, 100); // Small timeout to ensure DOM is fully updated
+      }, 200); // Slightly longer timeout to ensure DOM is fully ready
 
       // Smooth scroll to results
       resultContainer.scrollIntoView({ 
