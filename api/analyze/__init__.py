@@ -4,7 +4,7 @@ import requests
 import logging
 import azure.functions as func
 import re
-from urllib.parse import quote_plus
+from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse, quote_plus
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -158,12 +158,15 @@ def find_cheaper_alternative_with_search(item_name: str, item_cost: float) -> di
     prompt = f"""
     Find a cheaper alternative to "{item_name}" that costs less than ${item_cost}.
     
-    I want you to use Google Search to find real alternatives available for purchase from reputable online retailers.
+    I want you to use Google Search to find real alternatives available for purchase NOW from reputable online retailers.
     
     For the selected alternative:
     1. Provide the exact product name 
     2. Provide the exact price (must be lower than ${item_cost})
-    3. Provide the direct product URL from the retailer (not a search results page)
+    3. Provide the DIRECT PRODUCT URL that goes to the product page on the retailer's website, not a search results page
+       - The URL must be a complete, clickable link that takes users directly to the product page
+       - Verify the URL is accessible and goes to the actual product listing
+       - Do NOT provide shortened URLs or affiliate links
     4. Provide the retailer name
     
     Return the information ONLY as a JSON object with this exact structure:
@@ -218,11 +221,20 @@ def find_cheaper_alternative_with_search(item_name: str, item_cost: float) -> di
         result = extract_json(text)
         
         # Log the search sources if available (for debugging)
+        search_sources = []
         if "groundingMetadata" in gemini_response["candidates"][0]:
             grounding = gemini_response["candidates"][0]["groundingMetadata"]
             if "groundingChunks" in grounding:
-                sources = [chunk.get("web", {}).get("uri", "") for chunk in grounding["groundingChunks"]]
-                logger.info(f"Search sources: {sources}")
+                search_sources = [chunk.get("web", {}).get("uri", "") for chunk in grounding["groundingChunks"]]
+                logger.info(f"Search sources: {search_sources}")
+                
+                # Use one of the actual search sources as fallback if the URL is problematic
+                valid_sources = [s for s in search_sources if s and is_product_url(s)]
+                if valid_sources and (not result or not result.get('url') or not is_product_url(result.get('url', ''))):
+                    logger.info(f"Using search source as fallback URL: {valid_sources[0]}")
+                    if not result:
+                        result = {}
+                    result['url'] = valid_sources[0]
         
         # Validate the result
         if (
@@ -232,16 +244,26 @@ def find_cheaper_alternative_with_search(item_name: str, item_cost: float) -> di
             "url" in result and
             float(result["price"]) < item_cost
         ):
+            # Validate and fix URL if needed
+            result["url"] = ensure_valid_product_url(result["url"])
+            
+            # If we still don't have a valid product URL, try to extract one from search sources
+            if not is_product_url(result["url"]) and search_sources:
+                product_urls = [s for s in search_sources if is_product_url(s)]
+                if product_urls:
+                    result["url"] = ensure_valid_product_url(product_urls[0])
+                    logger.info(f"Replaced with product URL from search sources: {result['url']}")
+            
             # Add retailer if missing
-            if "retailer" not in result:
+            if "retailer" not in result or not result["retailer"]:
                 try:
-                    from urllib.parse import urlparse
                     domain = urlparse(result["url"]).netloc
                     result["retailer"] = domain.replace("www.", "").split(".")[0].title()
                 except:
                     result["retailer"] = "Online Retailer"
             
             logger.info(f"Found alternative: {result['name']} for ${result['price']} at {result['retailer']}")
+            logger.info(f"Product URL: {result['url']}")
             return result
         
         logger.info("No suitable alternative found")
@@ -250,6 +272,82 @@ def find_cheaper_alternative_with_search(item_name: str, item_cost: float) -> di
     except Exception as e:
         logger.error(f"Error searching for alternatives with Gemini: {str(e)}")
         return None
+
+def is_product_url(url: str) -> bool:
+    """
+    Check if a URL is likely to be a product page.
+    """
+    if not url:
+        return False
+        
+    try:
+        parsed = urlparse(url)
+        
+        # Check for common product URL patterns
+        product_indicators = [
+            "/p/", "/product/", "/item/", "/dp/", "/shop/", "/buy/", "/ip/",
+            "pid=", "product_id=", "productId=", "itemId=", "skuId="
+        ]
+        
+        # Check for known shopping domains
+        shopping_domains = [
+            "amazon", "walmart", "target", "bestbuy", "ebay", "etsy", 
+            "homedepot", "lowes", "wayfair", "newegg", "overstock",
+            "costco", "samsclub", "macys", "nordstrom", "kohls"
+        ]
+        
+        # Check if domain contains any shopping domain keywords
+        is_shopping_domain = any(shop in parsed.netloc.lower() for shop in shopping_domains)
+        
+        # Check if path contains any product indicators
+        has_product_indicator = any(indicator in parsed.path.lower() or indicator in parsed.query.lower() 
+                                   for indicator in product_indicators)
+        
+        # URLs with "search" or "list" in them are likely search results, not product pages
+        is_search_page = "search" in parsed.path.lower() or "list" in parsed.path.lower()
+        
+        return (is_shopping_domain and has_product_indicator) or (is_shopping_domain and not is_search_page)
+    except:
+        return False
+
+def ensure_valid_product_url(url: str) -> str:
+    """
+    Make sure the URL is a valid product URL.
+    Fix common issues with URLs provided by AI.
+    """
+    if not url:
+        return ""
+        
+    # Make sure URL has a scheme
+    if not url.startswith(('http://', 'https://')):
+        url = 'https://' + url
+    
+    # Remove any URL parameters that might be tracking-related
+    # but keep essential parameters like product ID
+    try:
+        parsed = urlparse(url)
+        
+        # Keep only essential query parameters (usually product IDs)
+        essential_params = ["id", "pid", "product", "item", "p", "productId", "itemId", "skuId", "sku"]
+        
+        query_params = parse_qsl(parsed.query)
+        filtered_params = [(k, v) for k, v in query_params 
+                          if any(param in k.lower() for param in essential_params)]
+        
+        # Rebuild the URL with only essential parameters
+        clean_url = urlunparse((
+            parsed.scheme,
+            parsed.netloc,
+            parsed.path,
+            parsed.params,
+            urlencode(filtered_params),
+            ""  # Remove fragment
+        ))
+        
+        return clean_url
+    except:
+        # If any errors occur in parsing, return the original URL
+        return url
 
 def get_purchase_recommendation(item_name: str, item_cost: float, alternative: dict = None, advanced_data: dict = None) -> dict:
     """
