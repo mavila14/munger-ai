@@ -556,6 +556,7 @@ body {
   margin: 30px 0;
   text-align: center;
   animation: fadeIn 0.5s ease-out;
+  order: 1; /* Ensure this appears first */
 }
 
 .recommendation {
@@ -594,6 +595,7 @@ body {
   border-radius: 0 12px 12px 0;
   position: relative;
   animation: fadeIn 0.5s ease-out;
+  order: 3; /* Ensure this appears last */
 }
 
 .munger-quote::before {
@@ -606,7 +608,7 @@ body {
   left: 10px;
 }
 
-/* NEW STYLES FOR OPTIONAL FIELD INDICATOR */
+/* OPTIONAL FIELD INDICATOR */
 .optional-text {
   font-weight: normal;
   font-size: 0.85em;
@@ -614,16 +616,19 @@ body {
   font-style: italic;
 }
 
-/* NEW STYLES FOR ALTERNATIVE PRODUCT SUGGESTIONS */
+/* ALTERNATIVE PRODUCT SUGGESTIONS */
 .alternative-suggestion {
   background-color: #F0FFF4;
   border: 1px solid #C6F6D5;
   border-radius: 10px;
   padding: 16px;
-  margin: 20px 0;
+  margin: 0 0 24px 0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   position: relative;
   overflow: hidden;
+  display: block; /* Ensure it's displayed as a block */
+  visibility: visible; /* Make sure it's visible */
+  order: 2; /* Ensure this appears second */
 }
 
 .alternative-suggestion h3 {
@@ -631,29 +636,82 @@ body {
   margin-top: 0;
   margin-bottom: 12px;
   font-size: 18px;
+  display: flex;
+  align-items: center;
+}
+
+.alternative-suggestion h3::before {
+  content: "";
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  margin-right: 8px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2338A169'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M14 5l7 7m0 0l-7 7m7-7H3'%3E%3C/path%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
 }
 
 .alternative-link {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   background-color: #38A169;
-  color: white;
-  padding: 8px 16px;
+  color: white !important; /* Ensure text is white on all browsers */
+  padding: 10px 18px;
   border-radius: 8px;
-  text-decoration: none;
+  text-decoration: none !important; /* Remove underlines on all browsers */
   margin: 8px 0;
   font-weight: 500;
   transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer; /* Show hand cursor on hover for better UX */
+  border: none; /* Remove any default borders */
+  -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
+  user-select: none; /* Prevent text selection */
+  min-width: 150px; /* Ensure minimum clickable area */
+}
+
+/* Add a subtle animation to the link button */
+.alternative-link::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: all 0.6s ease;
+}
+
+.alternative-link:hover::after {
+  left: 100%;
 }
 
 .alternative-link i {
-  margin-right: 6px;
+  margin-right: 8px;
+  font-size: 1.1em;
 }
 
-.alternative-link:hover {
+.alternative-link:hover, 
+.alternative-link:active,
+.alternative-link:focus {
   background-color: #2F855A;
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  color: white !important;
+  text-decoration: none !important;
+}
+
+.retailer-info {
+  margin: 5px 0;
+  font-size: 0.95em;
+  color: #4A5568;
+}
+
+.retailer-info strong {
+  color: #38A169;
+  text-transform: capitalize;
 }
 
 .savings-text {
@@ -795,169 +853,10 @@ body {
   }
   
   .alternative-link {
-    width: 100%;
-    justify-content: center;
-  }
-}
-
-
-.retailer-info {
-  margin: 5px 0;
-  font-size: 0.95em;
-  color: #4A5568;
-}
-
-.retailer-info strong {
-  color: #38A169;
-  text-transform: capitalize;
-}
-
-.alternative-link {
-  display: inline-flex;
-  align-items: center;
-  background-color: #38A169;
-  color: white;
-  padding: 8px 16px;
-  border-radius: 8px;
-  text-decoration: none;
-  margin: 8px 0;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-/* Add a subtle animation to the link button */
-.alternative-link::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-  transition: all 0.6s ease;
-}
-
-.alternative-link:hover::after {
-  left: 100%;
-}
-
-.alternative-link i {
-  margin-right: 6px;
-}
-
-.alternative-link:hover {
-  background-color: #2F855A;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-.alternative-suggestion {
-  background-color: #F0FFF4;
-  border: 1px solid #C6F6D5;
-  border-radius: 10px;
-  padding: 16px;
-  margin: 20px 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  position: relative;
-  overflow: hidden;
-}
-
-.alternative-suggestion h3 {
-  color: #38A169;
-  margin-top: 0;
-  margin-bottom: 12px;
-  font-size: 18px;
-  display: flex;
-  align-items: center;
-}
-
-.alternative-suggestion h3::before {
-  content: "";
-  display: inline-block;
-  width: 18px;
-  height: 18px;
-  margin-right: 8px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2338A169'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M14 5l7 7m0 0l-7 7m7-7H3'%3E%3C/path%3E%3C/svg%3E");
-  background-size: contain;
-  background-repeat: no-repeat;
-}
-
-/* Add this to your style.css file to fix alternative links for all devices */
-
-.alternative-link {
-  display: inline-flex;
-  align-items: center;
-  background-color: #38A169;
-  color: white !important; /* Ensure text is white on all browsers */
-  padding: 10px 18px;
-  border-radius: 8px;
-  text-decoration: none !important; /* Remove underlines on all browsers */
-  margin: 8px 0;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-  cursor: pointer; /* Show hand cursor on hover for better UX */
-  border: none; /* Remove any default borders */
-  -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
-  user-select: none; /* Prevent text selection */
-}
-
-/* Make sure the link is a block element on mobile for easier tapping */
-@media (max-width: 768px) {
-  .alternative-link {
     display: flex;
     width: 100%;
     justify-content: center;
     padding: 12px 16px;
     margin-top: 12px;
   }
-}
-
-/* Add a subtle animation to the link button */
-.alternative-link::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-  transition: all 0.6s ease;
-}
-
-.alternative-link:hover::after {
-  left: 100%;
-}
-
-.alternative-link i {
-  margin-right: 8px;
-  font-size: 1.1em;
-}
-
-.alternative-link:hover, 
-.alternative-link:active,
-.alternative-link:focus {
-  background-color: #2F855A;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  color: white !important;
-  text-decoration: none !important;
-}
-
-/* Ensure correct display order by controlling the margin */
-.recommendation-container {
-  margin: 24px 0 30px 0;
-  order: 1; /* Ensure this appears first */
-}
-
-.alternative-suggestion {
-  margin: 0 0 24px 0;
-  order: 2; /* Ensure this appears second */
-}
-
-.munger-quote {
-  order: 3; /* Ensure this appears last */
 }
