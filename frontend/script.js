@@ -279,7 +279,11 @@ document.addEventListener("DOMContentLoaded", () => {
     return hasData ? advancedData : null;
   }
 
-  // Analyze button click event handler
+  // Update to script.js - fixing alternative link for desktop and reordering display
+
+// ...existing code above...
+
+// Analyze button click event handler
 analyzeBtn.addEventListener("click", async () => {
   const itemName = itemNameInput.value.trim();
   const itemCost = itemCostInput.value.trim();
@@ -382,27 +386,7 @@ analyzeBtn.addEventListener("click", async () => {
       resultsHTML += `<p><strong>Interesting Facts:</strong> ${data.facts}</p>`;
     }
 
-    // Add alternative product suggestion if available (now with retailer info)
-    if (data.alternative && data.alternative.name && data.alternative.url) {
-      const savings = parseFloat(data.cost) - parseFloat(data.alternative.price);
-      const savingsPercent = (savings / parseFloat(data.cost) * 100).toFixed(1);
-      const retailerName = data.alternative.retailer || 
-                         new URL(data.alternative.url).hostname.replace('www.', '').split('.')[0];
-      
-      resultsHTML += `
-        <div class="alternative-suggestion">
-          <h3>Cheaper Alternative Found:</h3>
-          <p><strong>${data.alternative.name}</strong> - $${parseFloat(data.alternative.price).toFixed(2)}</p>
-          <p class="retailer-info">From <strong>${retailerName}</strong></p>
-          <p><a href="${data.alternative.url}" target="_blank" rel="noopener noreferrer" class="alternative-link">
-            <i class="fas fa-external-link-alt"></i> View Alternative
-          </a></p>
-          <p class="savings-text">Potential Savings: $${savings.toFixed(2)} (${savingsPercent}%)</p>
-        </div>
-      `;
-    }
-
-    // Add recommendation and explanation
+    // MOVED: Add recommendation and explanation BEFORE alternatives
     resultsHTML += `
       <div class="recommendation-container">
         <h3>Charlie Munger's Recommendation:</h3>
@@ -411,7 +395,41 @@ analyzeBtn.addEventListener("click", async () => {
         </div>
         <p>${data.explanation}</p>
       </div>
+    `;
+
+    // Add alternative product suggestion if available (now with retailer info)
+    if (data.alternative && data.alternative.name && data.alternative.url) {
+      const savings = parseFloat(data.cost) - parseFloat(data.alternative.price);
+      const savingsPercent = (savings / parseFloat(data.cost) * 100).toFixed(1);
       
+      // Extract retailer name from the data or from the URL
+      let retailerName = data.alternative.retailer || "";
+      if (!retailerName && data.alternative.url) {
+        try {
+          retailerName = new URL(data.alternative.url).hostname
+            .replace('www.', '')
+            .split('.')[0]
+            .charAt(0).toUpperCase() + new URL(data.alternative.url).hostname.replace('www.', '').split('.')[0].slice(1);
+        } catch (e) {
+          retailerName = "Online Retailer";
+        }
+      }
+      
+      resultsHTML += `
+        <div class="alternative-suggestion">
+          <h3>Cheaper Alternative Found:</h3>
+          <p><strong>${data.alternative.name}</strong> - $${parseFloat(data.alternative.price).toFixed(2)}</p>
+          <p class="retailer-info">From <strong>${retailerName}</strong></p>
+          <p><a href="${data.alternative.url}" target="_blank" rel="noopener noreferrer" class="alternative-link" onclick="window.open('${data.alternative.url}', '_blank')">
+            <i class="fas fa-external-link-alt"></i> View Alternative
+          </a></p>
+          <p class="savings-text">Potential Savings: $${savings.toFixed(2)} (${savingsPercent}%)</p>
+        </div>
+      `;
+    }
+    
+    // Add Munger quote at the end
+    resultsHTML += `
       <div class="munger-quote">
         "${mungerQuotes[randomQuoteIndex]}"
         <div style="text-align: right; margin-top: 8px; font-weight: 500;">— Charlie Munger</div>
@@ -421,6 +439,16 @@ analyzeBtn.addEventListener("click", async () => {
     // Hide loading indicator and show results
     loadingIndicator.classList.add("hidden");
     resultContent.innerHTML = resultsHTML;
+
+    // Add click handler to ensure links work on all devices
+    const alternativeLinks = document.querySelectorAll('.alternative-link');
+    alternativeLinks.forEach(link => {
+      link.addEventListener('click', function(e) {
+        e.preventDefault();
+        const url = this.getAttribute('href');
+        window.open(url, '_blank');
+      });
+    });
 
     // Smooth scroll to results
     resultContainer.scrollIntoView({ 
@@ -444,6 +472,7 @@ analyzeBtn.addEventListener("click", async () => {
   }
 });
 
+// ...rest of code below...
   
   // Initialize the UI state
   updateItemNameRequirement();
