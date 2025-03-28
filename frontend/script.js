@@ -29,6 +29,13 @@ document.addEventListener("DOMContentLoaded", () => {
   let capturedImage = null;
   let hasImage = false;
   
+  // Function to create a Google search URL
+  function createGoogleSearchUrl(productName) {
+    // Encode the product name for a URL
+    const encodedName = encodeURIComponent(productName);
+    return `https://www.google.com/search?q=${encodedName}`;
+  }
+  
   // Function to update the item name field requirements based on image presence
   function updateItemNameRequirement() {
     if (hasImage) {
@@ -404,12 +411,11 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>
       `;
 
-      // Check if alternative exists and has the required properties
+      // Check if alternative exists and has a name property
       console.log("Checking alternative data...");
       if (data.alternative && 
           typeof data.alternative === 'object' && 
-          data.alternative.name && 
-          data.alternative.url) {
+          data.alternative.name) {
         
         console.log("Building alternative HTML section");
         
@@ -425,33 +431,24 @@ document.addEventListener("DOMContentLoaded", () => {
           savingsText = `<p class="savings-text">Potential Savings: $${savings.toFixed(2)} (${savingsPercent}%)</p>`;
         }
         
-        let retailerName = data.alternative.retailer || "";
-        if (!retailerName && data.alternative.url) {
-          try {
-            const url = new URL(data.alternative.url);
-            retailerName = url.hostname
-              .replace('www.', '')
-              .split('.')[0]
-              .charAt(0).toUpperCase() + url.hostname.replace('www.', '').split('.')[0].slice(1);
-          } catch (e) {
-            console.error("Error parsing URL:", e);
-            retailerName = "Online Retailer";
-          }
-        }
+        let retailerName = data.alternative.retailer || "Online Retailers";
         
         // The price display is now conditional
         const priceDisplay = data.alternative.price ? 
           `- $${parseFloat(data.alternative.price).toFixed(2)}` : 
           "";
         
+        // Create a Google search URL for the alternative product
+        const googleSearchUrl = createGoogleSearchUrl(data.alternative.name);
+        
         resultsHTML += `
           <div class="alternative-suggestion">
             <h3>Cheaper Alternative Found:</h3>
             <p><strong>${data.alternative.name}</strong> ${priceDisplay}</p>
-            <p class="retailer-info">From <strong>${retailerName}</strong></p>
+            <p class="retailer-info">Available from <strong>${retailerName}</strong></p>
             <p>
-              <a href="${data.alternative.url}" target="_blank" rel="noopener noreferrer" class="alternative-link">
-                <i class="fas fa-external-link-alt"></i> View Alternative
+              <a href="${googleSearchUrl}" target="_blank" rel="noopener noreferrer" class="alternative-link">
+                <i class="fas fa-search"></i> Search Google
               </a>
             </p>
             ${savingsText}
