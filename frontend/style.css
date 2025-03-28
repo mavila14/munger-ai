@@ -606,6 +606,62 @@ body {
   left: 10px;
 }
 
+/* NEW STYLES FOR OPTIONAL FIELD INDICATOR */
+.optional-text {
+  font-weight: normal;
+  font-size: 0.85em;
+  color: var(--text-lighter);
+  font-style: italic;
+}
+
+/* NEW STYLES FOR ALTERNATIVE PRODUCT SUGGESTIONS */
+.alternative-suggestion {
+  background-color: #F0FFF4;
+  border: 1px solid #C6F6D5;
+  border-radius: 10px;
+  padding: 16px;
+  margin: 20px 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.alternative-suggestion h3 {
+  color: #38A169;
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 18px;
+}
+
+.alternative-link {
+  display: inline-flex;
+  align-items: center;
+  background-color: #38A169;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  text-decoration: none;
+  margin: 8px 0;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.alternative-link i {
+  margin-right: 6px;
+}
+
+.alternative-link:hover {
+  background-color: #2F855A;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.savings-text {
+  color: #38A169;
+  font-weight: 600;
+  margin-top: 8px;
+}
+
 /* ANIMATION KEYFRAMES */
 @keyframes fadeIn {
   from { opacity: 0; }
@@ -732,5 +788,14 @@ body {
   
   .btn, .cta-button {
     padding: 12px 16px;
+  }
+  
+  .alternative-suggestion {
+    padding: 12px;
+  }
+  
+  .alternative-link {
+    width: 100%;
+    justify-content: center;
   }
 }
