@@ -1,3 +1,6 @@
+# Rename file from 'api/analyze/__innit__.py' to 'api/analyze/__init__.py'
+# The content remains the same, but the filename needs to be corrected
+
 import json
 import base64
 import requests
